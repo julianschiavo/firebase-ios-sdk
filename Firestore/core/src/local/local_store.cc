@@ -581,7 +581,7 @@ Target LocalStore::NewUmbrellaTarget(const std::string& bundle_id) {
       .ToTarget();
 }
 
-OptionalDocumentMap LocalStore::PopulateDocumentChanges(
+DocumentMap LocalStore::PopulateDocumentChanges(
     const DocumentUpdateMap& documents,
     const DocumentVersionMap& document_versions,
     const SnapshotVersion& global_version) {

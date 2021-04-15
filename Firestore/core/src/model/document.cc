@@ -24,7 +24,7 @@ namespace model {
 
 Document Document::InvalidDocument(const DocumentKey& document_key) {
   return {document_key, DocumentType::kInvalid, SnapshotVersion::None(),
-          ObjectValue{}, DocumentState::kSynced};
+          {}, DocumentState::kSynced};
 }
 
 Document Document::FoundDocument(const DocumentKey& document_key,
@@ -54,10 +54,11 @@ Document::Document(const Document& other)
 }
 
 Document& Document::ConvertToFoundDocument(const SnapshotVersion& version,
-                                           ObjectValue value) {
+                                          ObjectValue value ) {
+  std::shared_ptr<const ObjectValue> data{new ObjectValue(std::move(value))};
   version_ = version;
   document_type_ = DocumentType::kFoundDocument;
-  value_ = std::move(value);
+  value_=std::move(data);
   document_state_ = DocumentState::kSynced;
   return *this;
 }

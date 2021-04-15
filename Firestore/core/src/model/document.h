@@ -84,9 +84,6 @@ class Document {
   };
 
  public:
-  // Document contain Proto data that cannot be implicitly created or copied.
-  Document& operator=(const Document&) = delete;
-
   Document(const Document& other);
 
   Document() = default;
@@ -130,7 +127,7 @@ class Document {
    * and data are known.
    */
   Document& ConvertToFoundDocument(const SnapshotVersion& version,
-                                   ObjectValue value);
+                                    ObjectValue  value);
 
   /**
    * Changes the document type to indicate that it doesn't exist at the given
@@ -170,7 +167,7 @@ class Document {
   }
 
   const ObjectValue& data() const {
-    return value_;
+    return *value_;
   }
 
   /**
@@ -182,7 +179,7 @@ class Document {
    */
   absl::optional<google_firestore_v1_Value> field(
       const FieldPath& field_path) const {
-    return value_.Get(field_path);
+    return value_->Get(field_path);
   }
 
   bool is_valid_document() const {
@@ -214,7 +211,7 @@ class Document {
   Document(DocumentKey key,
            DocumentType document_type,
            SnapshotVersion version,
-           ObjectValue value,
+           std::shared_ptr<const ObjectValue> value,
            DocumentState document_state)
       : key_{std::move(key)},
         document_type_{document_type},
@@ -226,7 +223,7 @@ class Document {
   DocumentKey key_;
   DocumentType document_type_ = DocumentType::kInvalid;
   SnapshotVersion version_;
-  ObjectValue value_;
+  std::shared_ptr<const ObjectValue>value_;
   DocumentState document_state_ = DocumentState::kSynced;
 };
 
