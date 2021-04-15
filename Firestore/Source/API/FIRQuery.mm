@@ -47,7 +47,6 @@
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/field_path.h"
-#include "Firestore/core/src/model/field_value.h"
 #include "Firestore/core/src/model/resource_path.h"
 #include "Firestore/core/src/util/error_apple.h"
 #include "Firestore/core/src/util/exception.h"

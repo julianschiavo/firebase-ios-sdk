@@ -20,7 +20,6 @@
 
 #include "Firestore/core/src/core/target.h"
 #include "Firestore/core/src/model/document_set.h"
-#include "Firestore/core/src/model/field_value.h"
 
 namespace firebase {
 namespace firestore {

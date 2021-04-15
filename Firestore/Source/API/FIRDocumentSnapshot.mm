@@ -38,8 +38,6 @@
 #include "Firestore/core/src/model/database_id.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/field_path.h"
-#include "Firestore/core/src/model/field_value.h"
-#include "Firestore/core/src/model/field_value_options.h"
 #include "Firestore/core/src/nanopb/nanopb_util.h"
 #include "Firestore/core/src/remote/serializer.h"
 #include "Firestore/core/src/util/exception.h"
