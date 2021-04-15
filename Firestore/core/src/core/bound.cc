@@ -101,7 +101,7 @@ bool operator==(const Bound& lhs, const Bound& rhs) {
 }
 
 size_t Bound::Hash() const {
-  return util::Hash(position_, before_);
+  return util::Hash(model::CanonicalId(*position_), before_);
 }
 
 }  // namespace core

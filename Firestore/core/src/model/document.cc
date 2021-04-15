@@ -45,14 +45,6 @@ Document Document::UnknownDocument(const DocumentKey& document_key,
       InvalidDocument(document_key).ConvertToUnknownDocument(version));
 }
 
-Document::Document(const Document& other)
-    : key_{other.key_},
-      document_type_{other.document_type_},
-      version_{other.version_},
-      value_{other.value_},
-      document_state_{other.document_state_} {
-}
-
 Document& Document::ConvertToFoundDocument(const SnapshotVersion& version,
                                           ObjectValue value ) {
   std::shared_ptr<const ObjectValue> data{new ObjectValue(std::move(value))};

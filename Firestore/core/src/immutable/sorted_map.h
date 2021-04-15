@@ -201,34 +201,6 @@ class SortedMap : public SortedMapBase {
     UNREACHABLE();
   }
 
-  /**
-   * Creates a new map identical to this one, but with a key-value pair added or
-   * updated.
-   *
-   * @param key The key to insert/update.
-   * @param value The value to associate with the key.
-   * @return A new dictionary with the added/updated value.
-   */
-  ABSL_MUST_USE_RESULT SortedMap insert(const K& key, V&& value) const {
-    switch (tag_) {
-      case Tag::Array:
-        if (array_.size() >= kFixedSize) {
-          // Strictly speaking this conversion is more eager than it needs to
-          // be since we could be replacing an existing key. However, the
-          // benefit of using the array for small maps doesn't really depend on
-          // exactly where this cut-off happens and just unconditionally
-          // converting if the next insertion could overflow keeps things
-          // simpler.
-          tree_type tree = tree_type::Create(array_, comparator());
-          return SortedMap{tree.insert(key, std::move(value))};
-        } else {
-          return SortedMap{array_.insert(key, std::move(value))};
-        }
-      case Tag::Tree:
-        return SortedMap{tree_.insert(key, std::move(value))};
-    }
-    UNREACHABLE();
-  }
 
   /**
    * Creates a new map identical to this one, but with a key removed from it.

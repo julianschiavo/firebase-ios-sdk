@@ -84,17 +84,9 @@ class Document {
   };
 
  public:
-  Document(const Document& other);
-
+  Document(const Document& other)=default;
   Document() = default;
-
-  Document(Document&& other) noexcept
-      : key_{std::move(other.key_)},
-        document_type_{other.document_type_},
-        version_{other.version_},
-        value_{std::move(other.value_)},
-        document_state_{other.document_state_} {
-  }
+  Document(Document&& other) =default;
 
   /**
    * Creates a document with no known version or data. This document can serve

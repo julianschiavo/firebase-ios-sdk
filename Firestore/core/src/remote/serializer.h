@@ -99,36 +99,12 @@ class Serializer {
    */
   static std::string DecodeString(const pb_bytes_array_t* str);
 
-  /**
-   * Encodes the std::vector to nanopb bytes. If the input vector is empty, then
-   * the resulting return bytes will have length 0 (but will otherwise be valid,
-   * i.e. not null.)
-   *
-   * This method allocates memory; the caller is responsible for freeing it.
-   * Typically, the returned value will be added to a pointer field within a
-   * nanopb proto struct. Calling pb_release() on the resulting struct will
-   * cause all proto fields to be freed.
-   */
-  static pb_bytes_array_t* EncodeBytes(const std::vector<uint8_t>& bytes);
 
   /**
    * Returns the database ID, such as
    * `projects/{project_id}/databases/{database_id}`.
    */
   pb_bytes_array_t* EncodeDatabaseName() const;
-
-  /**
-   * @brief Converts the FieldValue model passed into bytes.
-   */
-  google_firestore_v1_Value EncodeFieldValue(
-      const google_firestore_v1_Value& field_value) const;
-
-  /**
-   * @brief Converts from nanopb proto to the model FieldValue format.
-   */
-  // TODO(wuandy): all `context` here should be mutable reference instead.
-  google_firestore_v1_Value DecodeFieldValue(
-      util::ReadContext* context, const google_firestore_v1_Value& proto) const;
 
   /**
    * Encodes the given document key as a fully qualified name. This includes the

@@ -56,7 +56,7 @@ NotInFilter::NotInFilter(FieldPath field, google_firestore_v1_Value value)
 bool NotInFilter::Rep::Matches(const Document& doc) const {
   const google_firestore_v1_ArrayValue& array_value = value().array_value;
 
-  if (absl::c_linear_search(array_value, model::NullValue())) {
+  if (Contains(array_value, model::NullValue())) {
     return false;
   }
   absl::optional<google_firestore_v1_Value> maybe_lhs = doc.field(field());

@@ -30,17 +30,14 @@
 #import "Firestore/Source/API/FIRFieldValue+Internal.h"
 #import "Firestore/Source/API/FIRFirestore+Internal.h"
 #import "Firestore/Source/API/FIRGeoPoint+Internal.h"
-#import "Firestore/Source/API/FSTUserDataConverter_legacy.h"
 #import "Firestore/Source/API/converters.h"
 
-#include "Firestore/Protos/nanopb/google/firestore/v1/document.nanopb.h"
 #include "Firestore/core/src/core/user_data.h"
 #include "Firestore/core/src/model/database_id.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/field_mask.h"
 #include "Firestore/core/src/model/field_path.h"
 #include "Firestore/core/src/model/field_transform.h"
-#include "Firestore/core/src/model/field_value.h"
 #include "Firestore/core/src/model/object_value.h"
 #include "Firestore/core/src/model/precondition.h"
 #include "Firestore/core/src/model/resource_path.h"
@@ -74,10 +71,8 @@ using firebase::firestore::model::DocumentKey;
 using firebase::firestore::model::FieldMask;
 using firebase::firestore::model::FieldPath;
 using firebase::firestore::model::FieldTransform;
-using firebase::firestore::google_firestore_v1_Value;
 using firebase::firestore::model::NumericIncrementTransform;
-using firebase::firestore::model::ObjectValue;
-using firebase::firestore::model::MutableObjectValue;
+using firebase::firestore::model::ObjectValue
 using firebase::firestore::model::ResourcePath;
 using firebase::firestore::model::Precondition;
 using firebase::firestore::model::ServerTimestampTransform;
@@ -130,7 +125,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @implementation FSTUserDataReader {
   DatabaseId _databaseID;
-  std::unique_ptr<Serializer> _serializer;
 }
 
 - (instancetype)initWithDatabaseID:(DatabaseId)databaseID
@@ -139,27 +133,8 @@ NS_ASSUME_NONNULL_BEGIN
   if (self) {
     _databaseID = std::move(databaseID);
     _preConverter = preConverter;
-    _serializer.reset(new Serializer{_databaseID});
   }
   return self;
-}
-
-// TODO(mutabledocuments): Remove these methods once we remove FieldValue
-- (FieldValue)wrapValue:(google_firestore_v1_Value)value {
-  ReadContext context;
-  return _serializer->DecodeFieldValue(&context, value);
-}
-
-- (std::vector<FieldValue>)wrapValues:(const std::vector<google_firestore_v1_Value> &)values {
-  std::vector<FieldValue> fieldValues;
-  for (const auto &value : values) {
-    fieldValues.emplace_back([self wrapValue:value]);
-  }
-  return fieldValues;
-}
-
-- (ObjectValue)wrapObject:(google_firestore_v1_Value)value {
-  return ObjectValue{[self wrapValue:value]};
 }
 
 - (ParsedSetData)parsedSetData:(id)input {
@@ -174,7 +149,7 @@ NS_ASSUME_NONNULL_BEGIN
                                                                  context:accumulator.RootContext()];
   HARD_ASSERT(updateData.has_value(), "Parsed data should not be nil.");
 
-  return std::move(accumulator).SetData([self wrapObject:*updateData]);
+  return std::move(accumulator).SetData({*updateData});
 }
 
 - (ParsedSetData)parsedMergeData:(id)input fieldMask:(nullable NSArray<id> *)fieldMask {
@@ -190,7 +165,7 @@ NS_ASSUME_NONNULL_BEGIN
                                                                  context:accumulator.RootContext()];
   HARD_ASSERT(updateData.has_value(), "Parsed data should not be nil.");
 
-  ObjectValue updateObject = [self wrapObject:*updateData];
+  ObjectValue updateObject{*updateData};
 
   if (fieldMask) {
     std::set<FieldPath> validatedFieldPaths;
@@ -234,7 +209,7 @@ NS_ASSUME_NONNULL_BEGIN
 
   ParseAccumulator accumulator{UserDataSource::Update};
   __block ParseContext context = accumulator.RootContext();
-  __block MutableObjectValue updateData;
+  __block ObjectValue updateData;
 
   [dict enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *) {
     FieldPath path;
@@ -261,15 +236,15 @@ NS_ASSUME_NONNULL_BEGIN
     }
   }];
 
-  google_firestore_v1_Value rootValue = updateData.Get(FieldPath::EmptyPath()).value();
-  return std::move(accumulator).UpdateData([self wrapObject:rootValue]);
+  google_firestore_v1_Value rootValue = updateData.Get();
+  return std::move(accumulator).UpdateData({rootValue});
 }
 
-- (FieldValue)parsedQueryValue:(id)input {
+- (google_firestore_v1_Value)parsedQueryValue:(id)input {
   return [self parsedQueryValue:input allowArrays:false];
 }
 
-- (FieldValue)parsedQueryValue:(id)input allowArrays:(bool)allowArrays {
+- (google_firestore_v1_Value)parsedQueryValue:(id)input allowArrays:(bool)allowArrays {
   ParseAccumulator accumulator{allowArrays ? UserDataSource::ArrayArgument
                                            : UserDataSource::Argument};
 
@@ -278,7 +253,7 @@ NS_ASSUME_NONNULL_BEGIN
   HARD_ASSERT(parsed, "Parsed data should not be nil.");
   HARD_ASSERT(accumulator.field_transforms().empty(),
               "Field transforms should have been disallowed.");
-  return [self wrapValue:*parsed];
+  return *parsed;
 }
 
 /**
