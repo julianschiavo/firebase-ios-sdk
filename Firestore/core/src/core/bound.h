@@ -18,9 +18,9 @@
 #define FIRESTORE_CORE_SRC_CORE_BOUND_H_
 
 #include <iosfwd>
+#include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "Firestore/Protos/nanopb/google/firestore/v1/document.nanopb.h"
 #include "Firestore/core/src/core/core_fwd.h"
@@ -84,7 +84,7 @@ class Bound {
   size_t Hash() const;
 
  private:
-  nanopb::Message<google_firestore_v1_ArrayValue> position_;
+  nanopb::SharedMessage<google_firestore_v1_ArrayValue> position_;
   bool before_;
 };
 

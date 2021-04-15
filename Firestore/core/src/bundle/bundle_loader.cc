@@ -22,10 +22,10 @@
 #include "Firestore/core/include/firebase/firestore/firestore_errors.h"
 #include "Firestore/core/src/api/load_bundle_task.h"
 #include "Firestore/core/src/bundle/bundle_document.h"
+#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/document_key_set.h"
 #include "Firestore/core/src/model/model_fwd.h"
-#include "Firestore/core/src/model/no_document.h"
 
 namespace firebase {
 namespace firestore {
@@ -34,9 +34,9 @@ namespace bundle {
 using firestore::Error;
 using firestore::api::LoadBundleTaskProgress;
 using firestore::api::LoadBundleTaskState;
+using model::Document;
 using model::DocumentKeySet;
 using model::DocumentMap;
-using model::NoDocument;
 using util::Status;
 using util::StatusOr;
 
@@ -59,8 +59,8 @@ Status BundleLoader::AddElementInternal(const BundleElement& element) {
       if (!document_metadata.exists()) {
         documents_ = documents_.insert(
             document_metadata.key(),
-            NoDocument(document_metadata.key(), document_metadata.read_time(),
-                       /*has_committed_mutations=*/false));
+            Document::NoDocument(document_metadata.key(),
+                                 document_metadata.read_time()));
         current_document_ = absl::nullopt;
       }
       break;
@@ -114,15 +114,15 @@ StatusOr<absl::optional<LoadBundleTaskProgress>> BundleLoader::AddElement(
   return {absl::make_optional(std::move(progress))};
 }
 
-StatusOr<MaybeDocumentMap> BundleLoader::ApplyChanges() {
+StatusOr<DocumentMap> BundleLoader::ApplyChanges() {
   if (current_document_ != absl::nullopt) {
-    return StatusOr<MaybeDocumentMap>(
+    return StatusOr<DocumentMap>(
         Status(Error::kErrorInvalidArgument,
                "Bundled documents end with a document metadata "
                "element instead of a document."));
   }
   if (metadata_.total_documents() != documents_.size()) {
-    return StatusOr<MaybeDocumentMap>(
+    return StatusOr<DocumentMap>(
         Status(Error::kErrorInvalidArgument,
                "Loaded documents count is not the same as in metadata."));
   }

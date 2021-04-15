@@ -31,7 +31,7 @@ namespace core {
  */
 class KeyFieldFilter : public FieldFilter {
  public:
-  KeyFieldFilter(model::FieldPath field,
+  KeyFieldFilter(const model::FieldPath& field,
                  core::Filter::Operator op,
                  google_firestore_v1_Value value);
 

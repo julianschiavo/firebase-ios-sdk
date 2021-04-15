@@ -54,9 +54,9 @@ bool Bound::SortsBeforeDocument(const OrderByList& order_by,
           GetTypeOrder(field_value) == TypeOrder ::kReference,
           "Bound has a non-key value where the key path is being used %s",
           field_value.ToString());
-      const auto& ref = DocumentKey::FromName(
+      auto key = DocumentKey::FromName(
           nanopb::MakeString(field_value.reference_value));
-      comparison = ref.key().CompareTo(document.key());
+      comparison = key.CompareTo(document.key());
 
     } else {
       absl::optional<google_firestore_v1_Value> doc_value =
@@ -80,15 +80,16 @@ bool Bound::SortsBeforeDocument(const OrderByList& order_by,
 
 std::string Bound::CanonicalId() const {
   std::string result = before_ ? "b:" : "a:";
-  for (const google_firestore_v1_Value& component : position_) {
-    result.append(component.ToString());
+  for (pb_size_t i = 0; i < position_->values_count; ++i) {
+    result.append(model::CanonicalId(position_->values[i]));
   }
   return result;
 }
 
 std::string Bound::ToString() const {
   return util::StringFormat("Bound(position=%s, before=%s)",
-                            util::ToString(position_), util::ToString(before_));
+                            model::CanonicalId(*position_),
+                            util::ToString(before_));
 }
 
 std::ostream& operator<<(std::ostream& os, const Bound& bound) {

@@ -23,7 +23,6 @@
 #include "Firestore/core/src/immutable/sorted_map.h"
 #include "Firestore/core/src/local/remote_document_cache.h"
 #include "Firestore/core/src/model/document_key.h"
-#include "Firestore/core/src/model/maybe_document.h"
 #include "Firestore/core/src/model/model_fwd.h"
 #include "Firestore/core/src/model/types.h"
 
@@ -43,9 +42,8 @@ class MemoryRemoteDocumentCache : public RemoteDocumentCache {
            const model::SnapshotVersion& read_time) override;
   void Remove(const model::DocumentKey& key) override;
 
-  absl::optional<model::Document> Get(const model::DocumentKey& key) override;
-  model::OptionalMaybeDocumentMap GetAll(
-      const model::DocumentKeySet& keys) override;
+  model::Document Get(const model::DocumentKey& key) override;
+  model::DocumentMap GetAll(const model::DocumentKeySet& keys) override;
   model::DocumentMap GetMatching(
       const core::Query& query,
       const model::SnapshotVersion& since_read_time) override;

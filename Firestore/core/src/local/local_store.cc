@@ -57,7 +57,6 @@ using model::Mutation;
 using model::MutationBatch;
 using model::MutationBatchResult;
 using model::ObjectValue;
-using model::OptionalMaybeDocumentMap;
 using model::PatchMutation;
 using model::Precondition;
 using model::ResourcePath;
@@ -107,7 +106,7 @@ void LocalStore::StartMutationQueue() {
   persistence_->Run("Start MutationQueue", [&] { mutation_queue_->Start(); });
 }
 
-MaybeDocumentMap LocalStore::HandleUserChange(const User& user) {
+DocumentMap LocalStore::HandleUserChange(const User& user) {
   // Swap out the mutation queue, grabbing the pending mutation batches before
   // and after.
   std::vector<MutationBatch> old_batches = persistence_->Run(
@@ -156,7 +155,7 @@ LocalWriteResult LocalStore::WriteLocally(std::vector<Mutation>&& mutations) {
     // Load and apply all existing mutations. This lets us compute the current
     // base state for all non-idempotent transforms before applying any
     // additional user-provided writes.
-    MaybeDocumentMap existing_documents = local_documents_->GetDocuments(keys);
+    DocumentMap documents = local_documents_->GetDocuments(keys);
 
     // For non-idempotent mutations (such as `FieldValue.increment()`), we
     // record the base state in a separate patch mutation. This is later used to
@@ -164,11 +163,11 @@ LocalWriteResult LocalStore::WriteLocally(std::vector<Mutation>&& mutations) {
     // sends us an update that already includes our transform.
     std::vector<Mutation> base_mutations;
     for (const Mutation& mutation : mutations) {
-      absl::optional<MaybeDocument> base_document =
-          existing_documents.get(mutation.key());
+      absl::optional<Document> base_document =
+              documents.get(mutation.key());
 
       absl::optional<ObjectValue> base_value =
-          mutation.ExtractTransformBaseValue(base_document);
+          mutation.ExtractTransformBaseValue(*base_document);
       if (base_value) {
         // NOTE: The base state should only be applied if there's some existing
         // document to override, so use a Precondition of exists=true
@@ -180,13 +179,12 @@ LocalWriteResult LocalStore::WriteLocally(std::vector<Mutation>&& mutations) {
 
     MutationBatch batch = mutation_queue_->AddMutationBatch(
         local_write_time, std::move(base_mutations), std::move(mutations));
-    MaybeDocumentMap changed_documents =
-        batch.ApplyToLocalDocumentSet(existing_documents);
-    return LocalWriteResult{batch.batch_id(), std::move(changed_documents)};
+   batch.ApplyToLocalDocumentSet(documents);
+    return LocalWriteResult{batch.batch_id(), std::move(documents)};
   });
 }
 
-MaybeDocumentMap LocalStore::AcknowledgeBatch(
+DocumentMap LocalStore::AcknowledgeBatch(
     const MutationBatchResult& batch_result) {
   return persistence_->Run("Acknowledge batch", [&] {
     const MutationBatch& batch = batch_result.batch();
@@ -204,24 +202,17 @@ void LocalStore::ApplyBatchResult(const MutationBatchResult& batch_result) {
   const DocumentVersionMap& versions = batch_result.doc_versions();
 
   for (const DocumentKey& doc_key : doc_keys) {
-    absl::optional<MaybeDocument> remote_doc =
-        remote_document_cache_->Get(doc_key);
-    absl::optional<MaybeDocument> doc = remote_doc;
+    Document doc =remote_document_cache_->Get(doc_key);
 
     auto ack_version_iter = versions.find(doc_key);
     HARD_ASSERT(ack_version_iter != versions.end(),
                 "doc_versions should contain every doc in the write.");
     const SnapshotVersion& ack_version = ack_version_iter->second;
 
-    if (!doc || doc->version() < ack_version) {
-      doc = batch.ApplyToRemoteDocument(doc, doc_key, batch_result);
-      if (!doc) {
-        HARD_ASSERT(
-            !remote_doc,
-            "Mutation batch %s applied to document %s resulted in nullopt.",
-            batch.ToString(), util::ToString(remote_doc));
-      } else {
-        remote_document_cache_->Add(*doc, batch_result.commit_version());
+    if (doc.version() < ack_version) {
+      batch.ApplyToRemoteDocument(doc, doc_key, batch_result);
+      if (doc.is_valid_document()) {{
+        remote_document_cache_->Add(doc, batch_result.commit_version());
       }
     }
   }
@@ -229,7 +220,7 @@ void LocalStore::ApplyBatchResult(const MutationBatchResult& batch_result) {
   mutation_queue_->RemoveMutationBatch(batch);
 }
 
-MaybeDocumentMap LocalStore::RejectBatch(BatchId batch_id) {
+DocumentMap LocalStore::RejectBatch(BatchId batch_id) {
   return persistence_->Run("Reject batch", [&] {
     absl::optional<MutationBatch> to_reject =
         mutation_queue_->LookupMutationBatch(batch_id);
@@ -413,7 +404,7 @@ absl::optional<MutationBatch> LocalStore::GetNextMutationBatch(
   });
 }
 
-absl::optional<MaybeDocument> LocalStore::ReadDocument(const DocumentKey& key) {
+absl::optional<Document> LocalStore::ReadDocument(const DocumentKey& key) {
   return persistence_->Run("ReadDocument",
                            [&] { return local_documents_->GetDocument(key); });
 }
@@ -521,8 +512,8 @@ void LocalStore::SaveBundle(const bundle::BundleMetadata& metadata) {
       "Save bundle", [&] { bundle_cache_->SaveBundleMetadata(metadata); });
 }
 
-MaybeDocumentMap LocalStore::ApplyBundledDocuments(
-    const MaybeDocumentMap& bundled_documents, const std::string& bundle_id) {
+DocumentMap LocalStore::ApplyBundledDocuments(
+    const DocumentMap& bundled_documents, const std::string& bundle_id) {
   // Allocates a target to hold all document keys from the bundle, such that
   // they will not get garbage collected right away.
   TargetData umbrella_target = AllocateTarget(NewUmbrellaTarget(bundle_id));
@@ -534,7 +525,7 @@ MaybeDocumentMap LocalStore::ApplyBundledDocuments(
     for (const auto& kv : bundled_documents) {
       const DocumentKey& key = kv.first;
       const auto& doc = kv.second;
-      if (doc.type() == MaybeDocument::Type::Document) {
+      if (doc.is_found_document()) {
         keys = keys.insert(key);
       }
       document_updates.emplace(key, doc);
@@ -590,11 +581,11 @@ Target LocalStore::NewUmbrellaTarget(const std::string& bundle_id) {
       .ToTarget();
 }
 
-OptionalMaybeDocumentMap LocalStore::PopulateDocumentChanges(
+OptionalDocumentMap LocalStore::PopulateDocumentChanges(
     const DocumentUpdateMap& documents,
     const DocumentVersionMap& document_versions,
     const SnapshotVersion& global_version) {
-  OptionalMaybeDocumentMap changed_docs;
+  OptionalDocumentMap changed_docs;
 
   DocumentKeySet updated_keys;
   for (const auto& kv : documents) {
@@ -602,13 +593,13 @@ OptionalMaybeDocumentMap LocalStore::PopulateDocumentChanges(
   }
   // Each loop iteration only affects its "own" doc, so it's safe to get all
   // the remote documents in advance in a single call.
-  OptionalMaybeDocumentMap existing_docs =
+  OptionalDocumentMap existing_docs =
       remote_document_cache_->GetAll(updated_keys);
 
   for (const auto& kv : documents) {
     const DocumentKey& key = kv.first;
-    const MaybeDocument& doc = kv.second;
-    absl::optional<MaybeDocument> existing_doc;
+    const Document& doc = kv.second;
+    absl::optional<Document> existing_doc;
     auto found_existing = existing_docs.get(key);
     if (found_existing) {
       existing_doc = *found_existing;
@@ -621,7 +612,7 @@ OptionalMaybeDocumentMap LocalStore::PopulateDocumentChanges(
     // Note: The order of the steps below is important, since we want to
     // ensure that rejected limbo resolutions (which fabricate NoDocuments
     // with SnapshotVersion::None) never add documents to cache.
-    if (doc.type() == MaybeDocument::Type::NoDocument &&
+    if (doc.type() == Document::Type::NoDocument &&
         doc.version() == SnapshotVersion::None()) {
       // NoDocuments with SnapshotVersion::None are used in manufactured
       // events. We remove these documents from cache since we lost access.

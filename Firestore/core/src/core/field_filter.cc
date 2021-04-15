@@ -83,9 +83,7 @@ const char* CanonicalName(Filter::Operator op) {
 
 FieldFilter FieldFilter::Create(FieldPath path,
                                 Operator op,
-
-                                using model::ResourcePath;
-                                value_rhs) {
+                                google_firestore_v1_Value value_rhs) {
   if (path.IsKeyFieldPath()) {
     if (op == Filter::Operator::In) {
       return KeyFieldInFilter(std::move(path), value_rhs);
@@ -180,16 +178,17 @@ bool FieldFilter::Rep::MatchesComparison(ComparisonResult comparison) const {
 
 std::string FieldFilter::Rep::CanonicalId() const {
   return absl::StrCat(field_.CanonicalString(), CanonicalName(op_),
-                      value_rhs_.ToString());
+                      model::CanonicalId(*value_rhs_));
 }
 
 std::string FieldFilter::Rep::ToString() const {
   return util::StringFormat("%s %s %s", field_.CanonicalString(),
-                            CanonicalName(op_), value_rhs_.ToString());
+                            CanonicalName(op_),
+                            model::CanonicalId(*value_rhs_));
 }
 
 size_t FieldFilter::Rep::Hash() const {
-  return util::Hash(field_, op_, value_rhs_);
+  return util::Hash(field_, op_, model::CanonicalId(*value_rhs_));
 }
 
 bool FieldFilter::Rep::Equals(const Filter::Rep& other) const {

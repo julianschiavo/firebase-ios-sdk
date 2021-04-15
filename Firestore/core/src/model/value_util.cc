@@ -354,6 +354,11 @@ bool Equals(const google_firestore_v1_Value& lhs,
   }
 }
 
+bool Equals(const google_firestore_v1_ArrayValue& lhs,
+            const google_firestore_v1_ArrayValue& rhs) {
+  return ArrayEquals(lhs, rhs);
+}
+
 std::string CanonifyTimestamp(const google_firestore_v1_Value& value) {
   return absl::StrFormat("time(%d,%d)", value.timestamp_value.seconds,
                          value.timestamp_value.nanos);
@@ -376,13 +381,11 @@ std::string CanonifyGeoPoint(const google_firestore_v1_Value& value) {
                          value.geo_point_value.longitude);
 }
 
-std::string CanonifyArray(const google_firestore_v1_Value& value) {
-  const auto& array = value.array_value;
-
+std::string CanonifyArray(const google_firestore_v1_ArrayValue& array_value) {
   std::string result = "[";
-  for (size_t i = 0; i < array.values_count; ++i) {
-    absl::StrAppend(&result, CanonicalId(array.values[i]));
-    if (i != array.values_count - 1) {
+  for (size_t i = 0; i < array_value.values_count; ++i) {
+    absl::StrAppend(&result, CanonicalId(array_value.values[i]));
+    if (i != array_value.values_count - 1) {
       absl::StrAppend(&result, ",");
     }
   }
@@ -439,7 +442,7 @@ std::string CanonicalId(const google_firestore_v1_Value& value) {
       return CanonifyGeoPoint(value);
 
     case google_firestore_v1_Value_array_value_tag:
-      return CanonifyArray(value);
+      return CanonifyArray(value.array_value);
 
     case google_firestore_v1_Value_map_value_tag: {
       return CanonifyObject(value);
@@ -448,6 +451,10 @@ std::string CanonicalId(const google_firestore_v1_Value& value) {
     default:
       HARD_FAIL("Invalid type value: %s", value.which_value_type);
   }
+}
+
+std::string CanonicalId(const google_firestore_v1_ArrayValue& value) {
+  return CanonifyArray(value);
 }
 
 bool Contains(google_firestore_v1_ArrayValue haystack,

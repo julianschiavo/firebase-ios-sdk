@@ -25,9 +25,6 @@ namespace firestore {
 namespace core {
 class Query;
 }  // namespace core
-namespace model {
-class DocumentMap;
-}  // namespace model
 
 namespace local {
 

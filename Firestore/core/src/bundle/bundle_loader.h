@@ -27,8 +27,9 @@
 #include "Firestore/core/src/bundle/bundle_callback.h"
 #include "Firestore/core/src/bundle/bundle_element.h"
 #include "Firestore/core/src/bundle/bundled_document_metadata.h"
+#include "Firestore/core/src/immutable/sorted_map.h"
 #include "Firestore/core/src/model/document_key.h"
-#include "Firestore/core/src/model/document_map.h"
+#include "Firestore/core/src/model/model_fwd.h"
 #include "Firestore/core/src/util/statusor.h"
 #include "absl/types/optional.h"
 

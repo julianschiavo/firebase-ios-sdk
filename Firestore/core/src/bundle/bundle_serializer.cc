@@ -716,7 +716,7 @@ google_firestore_v1_MapValue BundleSerializer::DecodeMapValue(
   // Note: The SDK expects MapValues to be sorted.
   std::map<std::string, google_firestore_v1_Value> sorted_values;
   for (auto it = fields.begin(); it != fields.end(); ++it) {
-    sorted_values.insert(it.key(), DecodeValue(reader, it.value()));
+    sorted_values.emplace(it.key(), DecodeValue(reader, it.value()));
   }
 
   google_firestore_v1_MapValue map_value{};

@@ -33,7 +33,6 @@ using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
 using model::ListenSequenceNumber;
-using model::OptionalMaybeDocumentMap;
 using model::SnapshotVersion;
 
 MemoryRemoteDocumentCache::MemoryRemoteDocumentCache(
@@ -41,7 +40,7 @@ MemoryRemoteDocumentCache::MemoryRemoteDocumentCache(
   persistence_ = persistence;
 }
 
-void MemoryRemoteDocumentCache::Add(const MaybeDocument& document,
+void MemoryRemoteDocumentCache::Add(const Document& document,
                                     const model::SnapshotVersion& read_time) {
   docs_ = docs_.insert(document.key(), std::make_pair(document, read_time));
 
@@ -53,20 +52,18 @@ void MemoryRemoteDocumentCache::Remove(const DocumentKey& key) {
   docs_ = docs_.erase(key);
 }
 
-absl::optional<MaybeDocument> MemoryRemoteDocumentCache::Get(
-    const DocumentKey& key) {
+Document MemoryRemoteDocumentCache::Get(const DocumentKey& key) {
   const auto& entry = docs_.get(key);
-  return entry ? entry->first : absl::optional<MaybeDocument>();
+  return entry ? entry->first : Document::InvalidDocument(key);
 }
 
-OptionalMaybeDocumentMap MemoryRemoteDocumentCache::GetAll(
-    const DocumentKeySet& keys) {
-  OptionalMaybeDocumentMap results;
+DocumentMap MemoryRemoteDocumentCache::GetAll(const DocumentKeySet& keys) {
+  DocumentMap results;
   for (const DocumentKey& key : keys) {
     // Make sure each key has a corresponding entry, which is nullopt in case
     // the document is not found.
     // TODO(http://b/32275378): Don't conflate missing / deleted.
-    results = results.insert(key, Get(key));
+    results = results.insert(key, std::move(Get(key)));
   }
   return results;
 }
@@ -87,8 +84,8 @@ DocumentMap MemoryRemoteDocumentCache::GetMatching(
     if (!query.path().IsPrefixOf(key.path())) {
       break;
     }
-    const MaybeDocument& maybe_doc = it->second.first;
-    if (!maybe_doc.is_document()) {
+    const Document& document = it->second.first;
+    if (!document.is_found_document()) {
       continue;
     }
 
@@ -97,9 +94,8 @@ DocumentMap MemoryRemoteDocumentCache::GetMatching(
       continue;
     }
 
-    Document doc(maybe_doc);
-    if (query.Matches(doc)) {
-      results = results.insert(key, std::move(doc));
+    if (query.Matches(document)) {
+      results = results.insert(key, document);
     }
   }
   return results;
@@ -124,8 +120,8 @@ std::vector<DocumentKey> MemoryRemoteDocumentCache::RemoveOrphanedDocuments(
 int64_t MemoryRemoteDocumentCache::CalculateByteSize(const Sizer& sizer) {
   int64_t count = 0;
   for (const auto& kv : docs_) {
-    const MaybeDocument& maybe_doc = kv.second.first;
-    count += sizer.CalculateByteSize(maybe_doc);
+    const Document& document = kv.second.first;
+    count += sizer.CalculateByteSize(document);
   }
   return count;
 }

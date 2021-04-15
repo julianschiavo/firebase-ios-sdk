@@ -58,14 +58,20 @@ util::ComparisonResult Compare(const google_firestore_v1_Value& left,
 bool Equals(const google_firestore_v1_Value& left,
             const google_firestore_v1_Value& right);
 
-bool ArrayEquals(const google_firestore_v1_ArrayValue& left,
-                 const google_firestore_v1_ArrayValue& right);
+bool Equals(const google_firestore_v1_ArrayValue& left,
+            const google_firestore_v1_ArrayValue& right);
 
 /**
  * Generate the canonical ID for the provided field value (as used in Target
  * serialization).
  */
 std::string CanonicalId(const google_firestore_v1_Value& value);
+
+/**
+ * Generate the canonical ID for the provided array value (as used in Target
+ * serialization).
+ */
+std::string CanonicalId(const google_firestore_v1_ArrayValue& value);
 
 /** Returns true if the Value list contains the specified element. */
 bool Contains(google_firestore_v1_ArrayValue haystack,
@@ -123,12 +129,12 @@ inline bool operator!=(const google_firestore_v1_Value& lhs,
 
 inline bool operator==(const google_firestore_v1_ArrayValue& lhs,
                        const google_firestore_v1_ArrayValue& rhs) {
-  return model::ArrayEquals(lhs, rhs);
+  return model::Equals(lhs, rhs);
 }
 
 inline bool operator!=(const google_firestore_v1_ArrayValue& lhs,
                        const google_firestore_v1_ArrayValue& rhs) {
-  return !model::ArrayEquals(lhs, rhs);
+  return !model::Equals(lhs, rhs);
 }
 
 inline std::ostream& operator<<(std::ostream& out,

@@ -123,7 +123,7 @@ class FieldFilter : public Filter {
     Operator op_;
 
     /** The right hand side of the relation. A constant value to compare to. */
-    nanopb::Message<google_firestore_v1_Value> value_rhs_;
+    nanopb::SharedMessage<google_firestore_v1_Value> value_rhs_;
   };
 
   explicit FieldFilter(std::shared_ptr<const Filter::Rep> rep);

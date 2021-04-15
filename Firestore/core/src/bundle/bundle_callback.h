@@ -20,7 +20,6 @@
 
 #include "Firestore/core/src/bundle/bundle_metadata.h"
 #include "Firestore/core/src/bundle/named_query.h"
-#include "Firestore/core/src/model/document_map.h"
 
 namespace firebase {
 namespace firestore {

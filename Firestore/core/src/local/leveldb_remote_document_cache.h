@@ -29,10 +29,6 @@
 namespace firebase {
 namespace firestore {
 
-namespace model {
-class DocumentMap;
-}
-
 namespace util {
 class Executor;
 }  // namespace util
