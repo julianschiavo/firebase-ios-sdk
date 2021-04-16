@@ -167,12 +167,11 @@ class WrappedRemoteDocumentCache : public RemoteDocumentCache {
 
   void Remove(const model::DocumentKey& key) override;
 
-  absl::optional<model::Document> Get(const model::DocumentKey& key) override;
+  model::Document Get(const model::DocumentKey& key) override;
 
-  model::OptionalMaybeDocumentMap GetAll(
-      const model::DocumentKeySet& keys) override;
+  model::MutableDocumentMap GetAll(const model::DocumentKeySet& keys) override;
 
-  model::DocumentMap GetMatching(
+  model::MutableDocumentMap GetMatching(
       const core::Query& query,
       const model::SnapshotVersion& since_read_time) override;
 

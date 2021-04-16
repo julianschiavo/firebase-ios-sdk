@@ -84,9 +84,10 @@ class Document {
   };
 
  public:
-  Document(const Document& other)=default;
+  //  Document(const Document& other)=default;
   Document() = default;
-  Document(Document&& other) =default;
+  //  Document(Document&& other) =default;
+  //  Document& operator=(const Document&)= default;
 
   /**
    * Creates a document with no known version or data. This document can serve
@@ -119,7 +120,7 @@ class Document {
    * and data are known.
    */
   Document& ConvertToFoundDocument(const SnapshotVersion& version,
-                                    ObjectValue  value);
+                                   ObjectValue value);
 
   /**
    * Changes the document type to indicate that it doesn't exist at the given
@@ -215,7 +216,7 @@ class Document {
   DocumentKey key_;
   DocumentType document_type_ = DocumentType::kInvalid;
   SnapshotVersion version_;
-  std::shared_ptr<const ObjectValue>value_;
+  std::shared_ptr<const ObjectValue> value_;
   DocumentState document_state_ = DocumentState::kSynced;
 };
 

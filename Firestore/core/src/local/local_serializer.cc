@@ -49,8 +49,8 @@ using bundle::BundledQuery;
 using bundle::BundleMetadata;
 using bundle::NamedQuery;
 using core::Target;
+using model::DeepClone;
 using model::Document;
-    using model::DeepClone;
 using model::DocumentState;
 using model::FieldTransform;
 using model::Mutation;
@@ -74,29 +74,28 @@ Message<firestore_client_MaybeDocument> LocalSerializer::EncodeMaybeDocument(
     const Document& document) const {
   Message<firestore_client_MaybeDocument> result;
 
- if (document.is_found_document()) {
-   result->which_document_type = firestore_client_MaybeDocument_document_tag;
-   // TODO(b/142956770): other platforms check for whether the `Document`
-   // contains a memoized proto and use it if available instead of
-   // re-encoding.
-   result->document = EncodeDocument(document);
-   result->has_committed_mutations = document.has_committed_mutations();
-   return result;
- }else if (document.is_no_document()){
-      result->which_document_type =
-          firestore_client_MaybeDocument_no_document_tag;
-      result->no_document = EncodeNoDocument(document);
-      result->has_committed_mutations = document.has_committed_mutations();
-      return result;
- }else if (document.is_unknown_document()) {
-   result->which_document_type =
-           firestore_client_MaybeDocument_unknown_document_tag;
-   result->unknown_document =
-           EncodeUnknownDocument(document);
-   result->has_committed_mutations = true;
-   return result;
- }else{
-      HARD_FAIL("Unknown document type %s", document.ToString());
+  if (document.is_found_document()) {
+    result->which_document_type = firestore_client_MaybeDocument_document_tag;
+    // TODO(b/142956770): other platforms check for whether the `Document`
+    // contains a memoized proto and use it if available instead of
+    // re-encoding.
+    result->document = EncodeDocument(document);
+    result->has_committed_mutations = document.has_committed_mutations();
+    return result;
+  } else if (document.is_no_document()) {
+    result->which_document_type =
+        firestore_client_MaybeDocument_no_document_tag;
+    result->no_document = EncodeNoDocument(document);
+    result->has_committed_mutations = document.has_committed_mutations();
+    return result;
+  } else if (document.is_unknown_document()) {
+    result->which_document_type =
+        firestore_client_MaybeDocument_unknown_document_tag;
+    result->unknown_document = EncodeUnknownDocument(document);
+    result->has_committed_mutations = true;
+    return result;
+  } else {
+    HARD_FAIL("Unknown document type %s", document.ToString());
   }
 
   UNREACHABLE();
@@ -138,14 +137,14 @@ google_firestore_v1_Document LocalSerializer::EncodeDocument(
   result.name = rpc_serializer_.EncodeKey(doc.key());
 
   // Encode Document.fields (unless it's empty)
-  const google_firestore_v1_MapValue &fields_map = doc.data().Get().map_value;
+  const google_firestore_v1_MapValue& fields_map = doc.data().Get().map_value;
   pb_size_t count = fields_map.fields_count;
   result.fields_count = count;
   result.fields = MakeArray<google_firestore_v1_Document_FieldsEntry>(count);
 
-  for (pb_size_t i = 0; i < count; ++i){
+  for (pb_size_t i = 0; i < count; ++i) {
     result.fields[i].key = nanopb::CopyBytesArray(fields_map.fields[i].key);
-  result.fields[i].value = DeepClone(fields_map.fields[i].value);
+    result.fields[i].value = DeepClone(fields_map.fields[i].value);
   }
 
   result.has_update_time = true;
@@ -164,9 +163,11 @@ Document LocalSerializer::DecodeDocument(
   SnapshotVersion version =
       rpc_serializer_.DecodeVersion(reader->context(), proto.update_time);
 
-  Document document = Document::FoundDocument(rpc_serializer_.DecodeKey(reader->context(), proto.name), version,std::move(fields));
+  Document document = Document::FoundDocument(
+      rpc_serializer_.DecodeKey(reader->context(), proto.name), version,
+      std::move(fields));
 
-  if( has_committed_mutations) {
+  if (has_committed_mutations) {
     document.SetHasCommittedMutations();
   }
 
@@ -190,9 +191,10 @@ Document LocalSerializer::DecodeNoDocument(
   SnapshotVersion version =
       rpc_serializer_.DecodeVersion(reader->context(), proto.read_time);
 
-  Document document = Document::NoDocument(rpc_serializer_.DecodeKey(reader->context(), proto.name), version);
+  Document document = Document::NoDocument(
+      rpc_serializer_.DecodeKey(reader->context(), proto.name), version);
 
-  if( has_committed_mutations) {
+  if (has_committed_mutations) {
     document.SetHasCommittedMutations();
   }
 

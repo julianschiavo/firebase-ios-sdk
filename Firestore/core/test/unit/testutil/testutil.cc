@@ -139,7 +139,8 @@ model::DatabaseId DbId(std::string project) {
 }
 
 google_firestore_v1_Value Ref(std::string project, absl::string_view path) {
-  return google_firestore_v1_Value::FromReference(DbId(std::move(project)), Key(path));
+  return google_firestore_v1_Value::FromReference(DbId(std::move(project)),
+                                                  Key(path));
 }
 
 model::ResourcePath Resource(absl::string_view field) {
@@ -386,8 +387,8 @@ model::PatchMutation PatchMutationHelper(
                               std::move(field_transforms));
 }
 
-std::pair<std::string, TransformOperation> Increment(std::string field,
-                                                     google_firestore_v1_Value operand) {
+std::pair<std::string, TransformOperation> Increment(
+    std::string field, google_firestore_v1_Value operand) {
   model::NumericIncrementTransform transform(std::move(operand));
 
   return std::pair<std::string, TransformOperation>(std::move(field),

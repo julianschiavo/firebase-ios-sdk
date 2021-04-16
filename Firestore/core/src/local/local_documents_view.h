@@ -57,8 +57,7 @@ class LocalDocumentsView {
    * @return Local view of the document or nil if we don't have any cached state
    * for it.
    */
-  absl::optional<const model::Document> GetDocument(
-      const model::DocumentKey& key);
+  const model::Document GetDocument(const model::DocumentKey& key);
 
   /**
    * Gets the local view of the documents identified by `keys`.
@@ -90,16 +89,15 @@ class LocalDocumentsView {
   friend class CountingQueryEngine;  // For testing
 
   /** Internal version of GetDocument that allows re-using batches. */
-  absl::optional<model::Document> GetDocument(
-      const model::DocumentKey& key,
-      const std::vector<model::MutationBatch>& batches);
+  model::Document GetDocument(const model::DocumentKey& key,
+                              const std::vector<model::MutationBatch>& batches);
 
   /**
    * Returns the view of the given `docs` as they would appear after applying
    * all mutations in the given `batches`.
    */
   void ApplyLocalMutationsToDocuments(
-      model::MutableDocumentMap* docs,
+      model::MutableDocumentMap& docs,
       const std::vector<model::MutationBatch>& batches);
 
   /** Performs a simple document lookup for the given path. */

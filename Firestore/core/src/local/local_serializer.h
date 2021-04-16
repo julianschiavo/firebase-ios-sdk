@@ -157,8 +157,8 @@ class LocalSerializer {
       const model::Document& no_doc) const;
 
   model::Document DecodeNoDocument(nanopb::Reader* reader,
-                                     const firestore_client_NoDocument& proto,
-                                     bool has_committed_mutations) const;
+                                   const firestore_client_NoDocument& proto,
+                                   bool has_committed_mutations) const;
 
   firestore_client_UnknownDocument EncodeUnknownDocument(
       const model::Document& unknown_doc) const;

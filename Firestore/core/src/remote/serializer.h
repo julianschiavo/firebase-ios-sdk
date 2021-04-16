@@ -99,7 +99,6 @@ class Serializer {
    */
   static std::string DecodeString(const pb_bytes_array_t* str);
 
-
   /**
    * Returns the database ID, such as
    * `projects/{project_id}/databases/{database_id}`.

@@ -19,8 +19,8 @@
 #include <ostream>
 
 #include "Firestore/core/src/model/document.h"
-#include "Firestore/core/src/util/string_format.h"
 #include "Firestore/core/src/model/value_util.h"
+#include "Firestore/core/src/util/string_format.h"
 #include "absl/strings/str_cat.h"
 
 namespace firebase {
@@ -41,7 +41,7 @@ ComparisonResult OrderBy::Compare(const Document& lhs,
     absl::optional<google_firestore_v1_Value> value2 = rhs.field(field_);
     HARD_ASSERT(value1.has_value() && value2.has_value(),
                 "Trying to compare documents on fields that don't exist.");
-    result = model::Compare(*value1,*value2);
+    result = model::Compare(*value1, *value2);
   }
 
   return direction_.ApplyTo(result);

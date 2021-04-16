@@ -18,10 +18,10 @@
 #define FIRESTORE_CORE_SRC_MODEL_DOCUMENT_SET_H_
 
 #include <iosfwd>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <memory>
 
 #include "Firestore/core/src/immutable/sorted_container.h"
 #include "Firestore/core/src/immutable/sorted_set.h"

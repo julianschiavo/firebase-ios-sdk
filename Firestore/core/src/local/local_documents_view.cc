@@ -47,28 +47,26 @@ using model::NoDocument;
 using model::ResourcePath;
 using model::SnapshotVersion;
 
-absl::optional<Document> LocalDocumentsView::GetDocument(
-    const DocumentKey& key) {
+const Document LocalDocumentsView::GetDocument(const DocumentKey& key) {
   std::vector<MutationBatch> batches =
       mutation_queue_->AllMutationBatchesAffectingDocumentKey(key);
   return GetDocument(key, batches);
 }
 
-absl::optional<Document> LocalDocumentsView::GetDocument(
+Document LocalDocumentsView::GetDocument(
     const DocumentKey& key, const std::vector<MutationBatch>& batches) {
-  absl::optional<Document> document = remote_document_cache_->Get(key);
+  Document document = remote_document_cache_->Get(key);
   for (const MutationBatch& batch : batches) {
-    document = batch.ApplyToLocalDocument(document, key);
+    batch.ApplyToLocalDocument(document, key);
   }
-
   return document;
 }
 
 void LocalDocumentsView::ApplyLocalMutationsToDocuments(
-    MutableDocumentMap* docs, const std::vector<MutationBatch>& batches) {
-  for (const auto& kv : *docs) {
+    MutableDocumentMap& docs, const std::vector<MutationBatch>& batches) {
+  for (const auto& kv : docs) {
     const DocumentKey& key = kv.first;
-    absl::optional<Document> local_view = kv.second;
+    Document local_view = kv.second;
     for (const MutationBatch& batch : batches) {
       batch.ApplyToLocalDocument(local_view, key);
     }
@@ -80,31 +78,20 @@ DocumentMap LocalDocumentsView::GetDocuments(const DocumentKeySet& keys) {
   return GetLocalViewOfDocuments(docs);
 }
 
-MaybeDocumentMap LocalDocumentsView::GetLocalViewOfDocuments(
-    const OptionalMaybeDocumentMap& base_docs) {
+DocumentMap LocalDocumentsView::GetLocalViewOfDocuments(
+    MutableDocumentMap& docs) {
   DocumentKeySet all_keys;
-  for (const auto& kv : base_docs) {
+  for (const auto& kv : docs) {
     all_keys = all_keys.insert(kv.first);
   }
   std::vector<MutationBatch> batches =
       mutation_queue_->AllMutationBatchesAffectingDocumentKeys(all_keys);
+  ApplyLocalMutationsToDocuments(docs, batches);
 
-  OptionalMaybeDocumentMap docs =
-      ApplyLocalMutationsToDocuments(base_docs, batches);
-
-  MaybeDocumentMap results;
+  DocumentMap results;
   for (const auto& kv : docs) {
-    const DocumentKey& key = kv.first;
-    absl::optional<MaybeDocument> maybe_doc = kv.second;
-
-    // TODO(http://b/32275378): Don't conflate missing / deleted.
-    if (!maybe_doc) {
-      maybe_doc = NoDocument(key, SnapshotVersion::None(),
-                             /* has_committed_mutations= */ false);
-    }
-    results = results.insert(key, *maybe_doc);
+    results = results.insert(kv.first, kv.second);
   }
-
   return results;
 }
 

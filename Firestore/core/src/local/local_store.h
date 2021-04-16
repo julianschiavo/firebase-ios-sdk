@@ -126,10 +126,10 @@ class LocalStore : public bundle::BundleCallback {
   LocalWriteResult WriteLocally(std::vector<model::Mutation>&& mutations);
 
   /**
-   * Returns the current value of a document with a given key, or `nullopt` if
-   * not found.
+   * Returns the current value of a document with a given key, or an invalid
+   * document if not found.
    */
-  absl::optional<model::Document> ReadDocument(const model::DocumentKey& key);
+  const model::Document ReadDocument(const model::DocumentKey& key);
 
   /**
    * Acknowledges the given batch.

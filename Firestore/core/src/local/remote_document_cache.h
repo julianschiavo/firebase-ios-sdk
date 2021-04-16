@@ -71,7 +71,8 @@ class RemoteDocumentCache {
    * @return The cached Document or NoDocument entries indexed by key. If an
    * entry is not cached, the corresponding key will be mapped to a null value.
    */
-  virtual model::DocumentMap GetAll(const model::DocumentKeySet& keys) = 0;
+  virtual model::MutableDocumentMap GetAll(
+      const model::DocumentKeySet& keys) = 0;
 
   /**
    * Executes a query against the cached Document entries
@@ -86,7 +87,7 @@ class RemoteDocumentCache {
    * documents that have been read since this snapshot version (exclusive).
    * @return The set of matching documents.
    */
-  virtual model::DocumentMap GetMatching(
+  virtual model::MutableDocumentMap GetMatching(
       const core::Query& query,
       const model::SnapshotVersion& since_read_time) = 0;
 };

@@ -201,7 +201,6 @@ class SortedMap : public SortedMapBase {
     UNREACHABLE();
   }
 
-
   /**
    * Creates a new map identical to this one, but with a key removed from it.
    *

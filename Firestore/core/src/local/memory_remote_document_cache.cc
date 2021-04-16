@@ -20,7 +20,6 @@
 #include "Firestore/core/src/local/memory_lru_reference_delegate.h"
 #include "Firestore/core/src/local/memory_persistence.h"
 #include "Firestore/core/src/local/sizer.h"
-#include "Firestore/core/src/model/document_map.h"
 #include "Firestore/core/src/util/hard_assert.h"
 
 namespace firebase {
@@ -31,8 +30,8 @@ using core::Query;
 using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
-using model::DocumentMap;
 using model::ListenSequenceNumber;
+using model::MutableDocumentMap;
 using model::SnapshotVersion;
 
 MemoryRemoteDocumentCache::MemoryRemoteDocumentCache(
@@ -57,8 +56,9 @@ Document MemoryRemoteDocumentCache::Get(const DocumentKey& key) {
   return entry ? entry->first : Document::InvalidDocument(key);
 }
 
-DocumentMap MemoryRemoteDocumentCache::GetAll(const DocumentKeySet& keys) {
-  DocumentMap results;
+MutableDocumentMap MemoryRemoteDocumentCache::GetAll(
+    const DocumentKeySet& keys) {
+  MutableDocumentMap results;
   for (const DocumentKey& key : keys) {
     // Make sure each key has a corresponding entry, which is nullopt in case
     // the document is not found.
@@ -68,13 +68,13 @@ DocumentMap MemoryRemoteDocumentCache::GetAll(const DocumentKeySet& keys) {
   return results;
 }
 
-DocumentMap MemoryRemoteDocumentCache::GetMatching(
+MutableDocumentMap MemoryRemoteDocumentCache::GetMatching(
     const Query& query, const SnapshotVersion& since_read_time) {
   HARD_ASSERT(
       !query.IsCollectionGroupQuery(),
       "CollectionGroup queries should be handled in LocalDocumentsView");
 
-  DocumentMap results;
+  MutableDocumentMap results;
 
   // Documents are ordered by key, so we can use a prefix scan to narrow down
   // the documents we need to match the query against.

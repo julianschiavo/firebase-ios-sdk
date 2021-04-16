@@ -50,8 +50,8 @@ class LevelDbRemoteDocumentCache : public RemoteDocumentCache {
   void Remove(const model::DocumentKey& key) override;
 
   model::Document Get(const model::DocumentKey& key) override;
-  model::DocumentMap GetAll(const model::DocumentKeySet& keys) override;
-  model::DocumentMap GetMatching(
+  model::MutableDocumentMap GetAll(const model::DocumentKeySet& keys) override;
+  model::MutableDocumentMap GetMatching(
       const core::Query& query,
       const model::SnapshotVersion& since_read_time) override;
 
@@ -60,7 +60,7 @@ class LevelDbRemoteDocumentCache : public RemoteDocumentCache {
    * Looks up a set of entries in the cache, returning only existing entries of
    * Type::Document.
    */
-  model::DocumentMap GetAllExisting(const model::DocumentKeySet& keys);
+  model::MutableDocumentMap GetAllExisting(const model::DocumentKeySet& keys);
 
   model::Document DecodeMaybeDocument(absl::string_view encoded,
                                       const model::DocumentKey& key);

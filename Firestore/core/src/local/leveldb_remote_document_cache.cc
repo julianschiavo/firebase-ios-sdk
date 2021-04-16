@@ -26,7 +26,7 @@
 #include "Firestore/core/src/local/leveldb_persistence.h"
 #include "Firestore/core/src/local/local_serializer.h"
 #include "Firestore/core/src/model/document.h"
-#include "Firestore/core/src/model/document_key_set.h" allo
+#include "Firestore/core/src/model/document_key_set.h"
 #include "Firestore/core/src/nanopb/message.h"
 #include "Firestore/core/src/nanopb/reader.h"
 #include "Firestore/core/src/util/background_queue.h"
@@ -45,7 +45,7 @@ using leveldb::Status;
 using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
-using model::DocumentMap;
+using model::MutableDocumentMap;
 using model::ResourcePath;
 using model::SnapshotVersion;
 using nanopb::ByteString;
@@ -139,7 +139,8 @@ Document LevelDbRemoteDocumentCache::Get(const DocumentKey& key) {
   }
 }
 
-DocumentMap LevelDbRemoteDocumentCache::GetAll(const DocumentKeySet& keys) {
+MutableDocumentMap LevelDbRemoteDocumentCache::GetAll(
+    const DocumentKeySet& keys) {
   BackgroundQueue tasks(executor_.get());
   AsyncResults<std::pair<DocumentKey, Document>> results;
 
@@ -161,18 +162,16 @@ DocumentMap LevelDbRemoteDocumentCache::GetAll(const DocumentKeySet& keys) {
 
   tasks.AwaitAll();
 
-  DocumentMap map;
+  MutableDocumentMap map;
   for (const auto& entry : results.Result()) {
     map = map.insert(entry.first, entry.second);
   }
   return map;
 }
 
-DocumentMap LevelDbRemoteDocumentCache::GetAllExisting(
+MutableDocumentMap LevelDbRemoteDocumentCache::GetAllExisting(
     const DocumentKeySet& keys) {
-  DocumentMap results;
-
-  DocumentMap docs = LevelDbRemoteDocumentCache::GetAll(keys);
+  MutableDocumentMap docs = LevelDbRemoteDocumentCache::GetAll(keys);
   for (const auto& kv : docs) {
     const DocumentKey& key = kv.first;
     auto& document = kv.second;
@@ -184,7 +183,7 @@ DocumentMap LevelDbRemoteDocumentCache::GetAllExisting(
   return docs;
 }
 
-DocumentMap LevelDbRemoteDocumentCache::GetMatching(
+MutableDocumentMap LevelDbRemoteDocumentCache::GetMatching(
     const Query& query, const SnapshotVersion& since_read_time) {
   HARD_ASSERT(
       !query.IsCollectionGroupQuery(),
@@ -249,8 +248,8 @@ DocumentMap LevelDbRemoteDocumentCache::GetMatching(
 
       const std::string& contents = it->value();
       tasks.Execute([this, &results, document_key, contents] {
-        MaybeDocument document = DecodeMaybeDocument(contents, document_key);
-        if (document.is_document()) {
+        Document document = DecodeMaybeDocument(contents, document_key);
+        if (document.is_found_document()) {
           results.Insert(Document(document));
         }
       });
@@ -258,7 +257,7 @@ DocumentMap LevelDbRemoteDocumentCache::GetMatching(
 
     tasks.AwaitAll();
 
-    DocumentMap map;
+    MutableDocumentMap map;
     for (const Document& doc : results.Result()) {
       map = map.insert(doc.key(), doc);
     }
@@ -266,13 +265,12 @@ DocumentMap LevelDbRemoteDocumentCache::GetMatching(
   }
 }
 
-MaybeDocument LevelDbRemoteDocumentCache::DecodeMaybeDocument(
+Document LevelDbRemoteDocumentCache::DecodeMaybeDocument(
     absl::string_view encoded, const DocumentKey& key) {
   StringReader reader{encoded};
 
   auto message = Message<firestore_client_MaybeDocument>::TryParse(&reader);
-  MaybeDocument maybe_document =
-      serializer_->DecodeMaybeDocument(&reader, *message);
+  Document maybe_document = serializer_->DecodeMaybeDocument(&reader, *message);
 
   if (!reader.ok()) {
     HARD_FAIL("MaybeDocument proto failed to parse: %s",
