@@ -34,7 +34,7 @@ DocumentSnapshot DocumentSnapshot::FromDocument(
     std::shared_ptr<Firestore> firestore,
     model::Document document,
     SnapshotMetadata metadata) {
-  return DocumentSnapshot{std::move(firestore), document.key(), document,
+  return DocumentSnapshot{std::move(firestore), document->key(), document,
                           std::move(metadata)};
 }
 
@@ -78,13 +78,13 @@ const std::string& DocumentSnapshot::document_id() const {
 }
 
 absl::optional<ObjectValue> DocumentSnapshot::GetData() const {
-  return internal_document_ ? internal_document_->data()
+  return internal_document_ ? (*internal_document_)->data()
                             : absl::optional<ObjectValue>{};
 }
 
 absl::optional<google_firestore_v1_Value> DocumentSnapshot::GetValue(
     const FieldPath& field_path) const {
-  return internal_document_ ? internal_document_->field(field_path)
+  return internal_document_ ? (*internal_document_)->field(field_path)
                             : absl::optional<google_firestore_v1_Value>{};
 }
 

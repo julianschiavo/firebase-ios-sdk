@@ -50,11 +50,11 @@ class KeyFieldFilter::Rep : public FieldFilter::Rep {
 KeyFieldFilter::KeyFieldFilter(const FieldPath& field,
                                Operator op,
                                google_firestore_v1_Value value)
-    : FieldFilter(std::make_shared<const Rep>(std::move(field), op, value)) {
+    : FieldFilter(std::make_shared<const Rep>(field, op, value)) {
 }
 
 bool KeyFieldFilter::Rep::Matches(const Document& doc) const {
-  const DocumentKey& lhs_key = doc.key();
+  const DocumentKey& lhs_key = doc->key();
   const DocumentKey& rhs_key =
       DocumentKey::FromName(nanopb::MakeString(value().reference_value));
 

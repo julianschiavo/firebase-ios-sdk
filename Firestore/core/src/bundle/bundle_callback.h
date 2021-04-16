@@ -41,7 +41,8 @@ class BundleCallback {
    * queue.
    */
   virtual model::DocumentMap ApplyBundledDocuments(
-      const model::DocumentMap& documents, const std::string& bundle_id) = 0;
+      const model::MutableDocumentMap& documents,
+      const std::string& bundle_id) = 0;
 
   /** Saves the given NamedQuery to local persistence. */
   virtual void SaveNamedQuery(const NamedQuery& query,

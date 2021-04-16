@@ -46,6 +46,7 @@ using core::Query;
 using core::Target;
 using core::TargetIdGenerator;
 using model::BatchId;
+using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
@@ -163,8 +164,7 @@ LocalWriteResult LocalStore::WriteLocally(std::vector<Mutation>&& mutations) {
     // sends us an update that already includes our transform.
     std::vector<Mutation> base_mutations;
     for (const Mutation& mutation : mutations) {
-      absl::optional<MutableDocument> base_document =
-          documents.get(mutation.key());
+      absl::optional<Document> base_document = documents.get(mutation.key());
 
       absl::optional<ObjectValue> base_value =
           mutation.ExtractTransformBaseValue(*base_document);

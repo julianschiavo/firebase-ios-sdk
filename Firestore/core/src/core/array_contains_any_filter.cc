@@ -55,7 +55,7 @@ ArrayContainsAnyFilter::ArrayContainsAnyFilter(FieldPath field,
 
 bool ArrayContainsAnyFilter::Rep::Matches(const Document& doc) const {
   const google_firestore_v1_ArrayValue& array_value = value().array_value;
-  absl::optional<google_firestore_v1_Value> maybe_lhs = doc.field(field());
+  absl::optional<google_firestore_v1_Value> maybe_lhs = doc->field(field());
   if (!maybe_lhs) return false;
 
   const google_firestore_v1_Value& lhs = *maybe_lhs;

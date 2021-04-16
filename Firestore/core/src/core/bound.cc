@@ -56,11 +56,11 @@ bool Bound::SortsBeforeDocument(const OrderByList& order_by,
           field_value.ToString());
       auto key = DocumentKey::FromName(
           nanopb::MakeString(field_value.reference_value));
-      comparison = key.CompareTo(document.key());
+      comparison = key.CompareTo(document->key());
 
     } else {
       absl::optional<google_firestore_v1_Value> doc_value =
-          document.field(ordering_component.field());
+          document->field(ordering_component.field());
       HARD_ASSERT(
           doc_value.has_value(),
           "Field should exist since document matched the orderBy already.");

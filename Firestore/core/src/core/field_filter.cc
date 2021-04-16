@@ -140,7 +140,7 @@ bool FieldFilter::Rep::IsInequality() const {
 }
 
 bool FieldFilter::Rep::Matches(const model::Document& doc) const {
-  absl::optional<google_firestore_v1_Value> maybe_lhs = doc.field(field_);
+  absl::optional<google_firestore_v1_Value> maybe_lhs = doc->field(field_);
   if (!maybe_lhs) return false;
 
   const google_firestore_v1_Value& lhs = *maybe_lhs;

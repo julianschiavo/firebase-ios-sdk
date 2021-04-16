@@ -40,7 +40,7 @@ using Operator = Filter::Operator;
 class KeyFieldInFilter::Rep : public FieldFilter::Rep {
  public:
   Rep(FieldPath field, google_firestore_v1_Value value)
-      : FieldFilter::Rep(std::move(field), Operator::In, std::move(value)) {
+      : FieldFilter::Rep(std::move(field), Operator::In, value) {
     ValidateArrayValue(this->value());
   }
 
@@ -53,8 +53,7 @@ class KeyFieldInFilter::Rep : public FieldFilter::Rep {
 
 KeyFieldInFilter::KeyFieldInFilter(FieldPath field,
                                    google_firestore_v1_Value value)
-    : FieldFilter(
-          std::make_shared<const Rep>(std::move(field), std::move(value))) {
+    : FieldFilter(std::make_shared<const Rep>(std::move(field), value)) {
 }
 
 bool KeyFieldInFilter::Rep::Matches(const Document& doc) const {
@@ -68,7 +67,7 @@ bool KeyFieldInFilter::Contains(
   reference_value.which_value_type =
       google_firestore_v1_Value_reference_value_tag;
   reference_value.reference_value =
-      nanopb::MakeBytesArray(doc.key().ToString());  // Verfy
+      nanopb::MakeBytesArray(doc->key().ToString());  // Verfy
   return model::Contains(array_value, reference_value);
 }
 

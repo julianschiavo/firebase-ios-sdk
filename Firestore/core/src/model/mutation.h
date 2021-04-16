@@ -36,6 +36,7 @@ namespace firebase {
 namespace firestore {
 namespace model {
 
+class Document;
 class MutableDocument;
 
 /**
@@ -228,7 +229,7 @@ class Mutation {
    *     idempotent mutations.
    */
   absl::optional<ObjectValue> ExtractTransformBaseValue(
-      const MutableDocument& document) const {
+      const Document& document) const {
     return rep_->ExtractTransformBaseValue(document);
   }
 
@@ -277,7 +278,7 @@ class Mutation {
                                   const Timestamp& local_write_time) const = 0;
 
     virtual absl::optional<ObjectValue> ExtractTransformBaseValue(
-        const MutableDocument& document) const;
+        const Document& document) const;
 
     /**
      * Applies the result of applying a transform by the backend.

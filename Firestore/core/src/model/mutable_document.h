@@ -26,6 +26,10 @@
 #include "Firestore/core/src/model/object_value.h"
 #include "Firestore/core/src/model/snapshot_version.h"
 
+namespace firebase {
+namespace firestore {
+namespace model {
+
 /**
  * Represents a document in Firestore with a key, version, data and whether it
  * has local mutations applied to it.
@@ -36,10 +40,6 @@
  * applied, `is_valid_document()` returns false and the document should be
  * removed from all views.
  */
-namespace firebase {
-namespace firestore {
-namespace model {
-
 class MutableDocument {
  private:
   enum class DocumentType {

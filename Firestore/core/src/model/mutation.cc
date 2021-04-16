@@ -21,6 +21,7 @@
 #include <sstream>
 #include <utility>
 
+#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/field_path.h"
 #include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/object_value.h"
@@ -58,12 +59,12 @@ void Mutation::ApplyToLocalView(MutableDocument& document,
 }
 
 absl::optional<ObjectValue> Mutation::Rep::ExtractTransformBaseValue(
-    const MutableDocument& document) const {
+    const Document& document) const {
   absl::optional<ObjectValue> base_object;
 
   for (const FieldTransform& transform : field_transforms_) {
     absl::optional<google_firestore_v1_Value> existing_value =
-        document.field(transform.path());
+        document->field(transform.path());
     absl::optional<google_firestore_v1_Value> coerced_value =
         transform.transformation().ComputeBaseValue(existing_value);
     if (coerced_value) {

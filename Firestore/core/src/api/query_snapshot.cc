@@ -34,9 +34,9 @@ namespace api {
 using api::Firestore;
 using core::DocumentViewChange;
 using core::ViewSnapshot;
+using model::Document;
 using model::DocumentComparator;
 using model::DocumentSet;
-using model::MutableDocument;
 using util::ThrowInvalidArgument;
 
 QuerySnapshot::QuerySnapshot(std::shared_ptr<Firestore> firestore,
@@ -72,8 +72,9 @@ void QuerySnapshot::ForEachDocument(
   DocumentSet document_set = snapshot_.documents();
   bool from_cache = metadata_.from_cache();
 
-  for (const MutableDocument& document : document_set) {
-    bool has_pending_writes = snapshot_.mutated_keys().contains(document.key());
+  for (const Document& document : document_set) {
+    bool has_pending_writes =
+        snapshot_.mutated_keys().contains(document->key());
     auto snap = DocumentSnapshot::FromDocument(
         firestore_, document, SnapshotMetadata(has_pending_writes, from_cache));
     callback(std::move(snap));
@@ -110,12 +111,12 @@ void QuerySnapshot::ForEachChange(
     // fast. Also all changes on the first snapshot are adds so there are also
     // no metadata-only changes to filter out.
     DocumentComparator doc_comparator = snapshot_.query().Comparator();
-    const MutableDocument* last_document = nullptr;
+    const Document* last_document = nullptr;
     size_t index = 0;
     for (const DocumentViewChange& change : snapshot_.document_changes()) {
-      const MutableDocument& doc = change.document();
+      const Document& doc = change.document();
       SnapshotMetadata metadata(
-          /*pending_writes=*/snapshot_.mutated_keys().contains(doc.key()),
+          /*pending_writes=*/snapshot_.mutated_keys().contains(doc->key()),
           /*from_cache=*/snapshot_.from_cache());
       auto document =
           DocumentSnapshot::FromDocument(firestore_, doc, std::move(metadata));
@@ -141,23 +142,23 @@ void QuerySnapshot::ForEachChange(
         continue;
       }
 
-      const MutableDocument& doc = change.document();
+      const Document& doc = change.document();
       SnapshotMetadata metadata(
-          /*pending_writes=*/snapshot_.mutated_keys().contains(doc.key()),
+          /*pending_writes=*/snapshot_.mutated_keys().contains(doc->key()),
           /*from_cache=*/snapshot_.from_cache());
       auto document = DocumentSnapshot::FromDocument(firestore_, doc, metadata);
 
       size_t old_index = DocumentChange::npos;
       size_t new_index = DocumentChange::npos;
       if (change.type() != DocumentViewChange::Type::Added) {
-        old_index = index_tracker.IndexOf(change.document().key());
+        old_index = index_tracker.IndexOf(change.document()->key());
         HARD_ASSERT(old_index != DocumentSet::npos,
                     "Index for document not found");
-        index_tracker = index_tracker.erase(change.document().key());
+        index_tracker = index_tracker.erase(change.document()->key());
       }
       if (change.type() != DocumentViewChange::Type::Removed) {
         index_tracker = index_tracker.insert(change.document());
-        new_index = index_tracker.IndexOf(change.document().key());
+        new_index = index_tracker.IndexOf(change.document()->key());
       }
 
       DocumentChange::Type type = DocumentChangeTypeForChange(change);

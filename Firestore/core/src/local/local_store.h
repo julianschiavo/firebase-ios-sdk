@@ -129,7 +129,7 @@ class LocalStore : public bundle::BundleCallback {
    * Returns the current value of a document with a given key, or an invalid
    * document if not found.
    */
-  const model::MutableDocument ReadDocument(const model::DocumentKey& key);
+  const model::Document ReadDocument(const model::DocumentKey& key);
 
   /**
    * Acknowledges the given batch.
@@ -258,7 +258,7 @@ class LocalStore : public bundle::BundleCallback {
    * queue.
    */
   model::DocumentMap ApplyBundledDocuments(
-      const model::DocumentMap& documents,
+      const model::MutableDocumentMap& documents,
       const std::string& bundle_id) override;
 
   /** Saves the given `NamedQuery` to local persistence. */

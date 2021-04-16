@@ -37,7 +37,7 @@ using Operator = Filter::Operator;
 class KeyFieldNotInFilter::Rep : public FieldFilter::Rep {
  public:
   Rep(FieldPath field, google_firestore_v1_Value value)
-      : FieldFilter::Rep(std::move(field), Operator::NotIn, std::move(value)) {
+      : FieldFilter::Rep(std::move(field), Operator::NotIn, value) {
     KeyFieldInFilter::ValidateArrayValue(this->value());
   }
 
@@ -50,8 +50,7 @@ class KeyFieldNotInFilter::Rep : public FieldFilter::Rep {
 
 KeyFieldNotInFilter::KeyFieldNotInFilter(FieldPath field,
                                          google_firestore_v1_Value value)
-    : FieldFilter(
-          std::make_shared<const Rep>(std::move(field), std::move(value))) {
+    : FieldFilter(std::make_shared<const Rep>(std::move(field), value)) {
 }
 
 bool KeyFieldNotInFilter::Rep::Matches(const Document& doc) const {

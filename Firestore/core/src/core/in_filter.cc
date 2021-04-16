@@ -35,7 +35,7 @@ using Operator = Filter::Operator;
 class InFilter::Rep : public FieldFilter::Rep {
  public:
   Rep(FieldPath field, google_firestore_v1_Value value)
-      : FieldFilter::Rep(std::move(field), Operator::In, std::move(value)) {
+      : FieldFilter::Rep(std::move(field), Operator::In, value) {
   }
 
   Type type() const override {
@@ -45,14 +45,13 @@ class InFilter::Rep : public FieldFilter::Rep {
   bool Matches(const model::Document& doc) const override;
 };
 
-InFilter::InFilter(FieldPath field, google_firestore_v1_Value value)
-    : FieldFilter(
-          std::make_shared<const Rep>(std::move(field), std::move(value))) {
+InFilter::InFilter(const FieldPath& field, google_firestore_v1_Value value)
+    : FieldFilter(std::make_shared<const Rep>(std::move(field), value)) {
 }
 
 bool InFilter::Rep::Matches(const Document& doc) const {
   const google_firestore_v1_ArrayValue& array_value = value().array_value;
-  absl::optional<google_firestore_v1_Value> maybe_lhs = doc.field(field());
+  absl::optional<google_firestore_v1_Value> maybe_lhs = doc->field(field());
   if (!maybe_lhs) return false;
   return Contains(array_value, *maybe_lhs);
 }

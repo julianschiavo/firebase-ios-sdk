@@ -35,10 +35,10 @@ ComparisonResult OrderBy::Compare(const Document& lhs,
                                   const Document& rhs) const {
   ComparisonResult result;
   if (field_ == FieldPath::KeyFieldPath()) {
-    result = lhs.key().CompareTo(rhs.key());
+    result = lhs->key().CompareTo(rhs->key());
   } else {
-    absl::optional<google_firestore_v1_Value> value1 = lhs.field(field_);
-    absl::optional<google_firestore_v1_Value> value2 = rhs.field(field_);
+    absl::optional<google_firestore_v1_Value> value1 = lhs->field(field_);
+    absl::optional<google_firestore_v1_Value> value2 = rhs->field(field_);
     HARD_ASSERT(value1.has_value() && value2.has_value(),
                 "Trying to compare documents on fields that don't exist.");
     result = model::Compare(*value1, *value2);

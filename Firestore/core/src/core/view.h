@@ -193,13 +193,13 @@ class View {
   }
 
  private:
-  util::ComparisonResult Compare(const model::MutableDocument& lhs,
-                                 const model::MutableDocument& rhs) const;
+  util::ComparisonResult Compare(const model::Document& lhs,
+                                 const model::Document& rhs) const;
 
   bool ShouldBeInLimbo(const model::DocumentKey& key) const;
 
-  bool ShouldWaitForSyncedDocument(const model::MutableDocument& new_doc,
-                                   const model::MutableDocument& old_doc) const;
+  bool ShouldWaitForSyncedDocument(const model::Document& new_doc,
+                                   const model::Document& old_doc) const;
 
   void ApplyTargetChange(
       const absl::optional<remote::TargetChange>& maybe_target_change);
