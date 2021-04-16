@@ -29,13 +29,13 @@ namespace testutil {
 using core::View;
 using core::ViewChange;
 using core::ViewSnapshot;
-using model::Document;
 using model::DocumentKeySet;
 using model::DocumentMap;
+using model::MutableDocument;
 using nanopb::ByteString;
 using remote::TargetChange;
 
-model::DocumentMap DocUpdates(const std::vector<model::Document>& docs) {
+model::DocumentMap DocUpdates(const std::vector<model::MutableDocument>& docs) {
   MaybeDocumentMap updates;
   for (const MaybeDocument& doc : docs) {
     updates = updates.insert(doc.key(), doc);
@@ -60,7 +60,7 @@ TargetChange AckTarget(DocumentKeySet docs) {
           /*removed_documents*/ DocumentKeySet{}};
 }
 
-TargetChange AckTarget(std::initializer_list<Document> docs) {
+TargetChange AckTarget(std::initializer_list<MutableDocument> docs) {
   DocumentKeySet keys;
   for (const auto& doc : docs) {
     keys = keys.insert(doc.key());

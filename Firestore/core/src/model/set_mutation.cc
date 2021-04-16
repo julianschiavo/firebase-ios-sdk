@@ -19,7 +19,7 @@
 #include <cstdlib>
 #include <utility>
 
-#include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/value_util.h"
 #include "Firestore/core/src/util/hard_assert.h"
 #include "Firestore/core/src/util/hashing.h"
@@ -67,7 +67,7 @@ SetMutation::Rep::Rep(DocumentKey&& key,
 }
 
 void SetMutation::Rep::ApplyToRemoteDocument(
-    Document& document, const MutationResult& mutation_result) const {
+    MutableDocument& document, const MutationResult& mutation_result) const {
   VerifyKeyMatches(document);
 
   // Unlike ApplyToLocalView, if we're applying a mutation to a remote document
@@ -82,7 +82,7 @@ void SetMutation::Rep::ApplyToRemoteDocument(
 }
 
 void SetMutation::Rep::ApplyToLocalView(
-    Document& document, const Timestamp& local_write_time) const {
+    MutableDocument& document, const Timestamp& local_write_time) const {
   VerifyKeyMatches(document);
 
   if (!precondition().IsValidFor(*document)) {

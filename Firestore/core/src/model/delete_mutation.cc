@@ -19,8 +19,8 @@
 #include <cstdlib>
 #include <utility>
 
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/field_path.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/util/hard_assert.h"
 
 namespace firebase {
@@ -40,7 +40,7 @@ DeleteMutation::DeleteMutation(const Mutation& mutation) : Mutation(mutation) {
 }
 
 void DeleteMutation::Rep::ApplyToRemoteDocument(
-    Document& document, const MutationResult& mutation_result) const {
+    MutableDocument& document, const MutationResult& mutation_result) const {
   VerifyKeyMatches(document);
 
   HARD_ASSERT(mutation_result.transform_results().values_count == 0,
@@ -56,7 +56,7 @@ void DeleteMutation::Rep::ApplyToRemoteDocument(
       .SetHasCommittedMutations();
 }
 
-void DeleteMutation::Rep::ApplyToLocalView(Document& document,
+void DeleteMutation::Rep::ApplyToLocalView(MutableDocument& document,
                                            const Timestamp&) const {
   VerifyKeyMatches(document);
 

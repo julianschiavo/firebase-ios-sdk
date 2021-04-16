@@ -94,7 +94,8 @@ class LocalStoreTest : public ::testing::TestWithParam<FactoryFunc> {
   model::TargetId AllocateQuery(core::Query query);
   local::TargetData GetTargetData(const core::Query& query);
   local::QueryResult ExecuteQuery(const core::Query& query);
-  void ApplyBundledDocuments(const std::vector<model::Document>& documents);
+  void ApplyBundledDocuments(
+      const std::vector<model::MutableDocument>& documents);
 
   /**
    * Applies the `from_cache` state to the given target via a synthesized

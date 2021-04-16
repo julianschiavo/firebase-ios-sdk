@@ -38,10 +38,10 @@ namespace remote {
 
 using local::QueryPurpose;
 using local::TargetData;
-using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentState;
+using model::MutableDocument;
 using model::NoDocument;
 using model::SnapshotVersion;
 using model::TargetId;
@@ -245,11 +245,11 @@ TEST_F(RemoteEventTest, WillAccumulateDocumentAddedAndRemovedEvents) {
   std::unordered_map<TargetId, TargetData> target_map =
       ActiveQueries({1, 2, 3, 4, 5, 6});
 
-  Document existing_doc = Doc("docs/1", 1, Map("value", 1));
+  MutableDocument existing_doc = Doc("docs/1", 1, Map("value", 1));
   auto change1 =
       MakeDocChange({1, 2, 3}, {4, 5, 6}, existing_doc.key(), existing_doc);
 
-  Document new_doc = Doc("docs/2", 2, Map("value", 2));
+  MutableDocument new_doc = Doc("docs/2", 2, Map("value", 2));
   auto change2 = MakeDocChange({1, 4}, {2, 6}, new_doc.key(), new_doc);
 
   // Create a remote event that includes both `change1` and `change2` as well as
@@ -302,11 +302,11 @@ TEST_F(RemoteEventTest, WillAccumulateDocumentAddedAndRemovedEvents) {
 TEST_F(RemoteEventTest, WillIgnoreEventsForPendingTargets) {
   std::unordered_map<TargetId, TargetData> target_map = ActiveQueries({1});
 
-  Document doc1 = Doc("docs/1", 1, Map("value", 1));
+  MutableDocument doc1 = Doc("docs/1", 1, Map("value", 1));
   auto change1 = MakeDocChange({1}, {}, doc1.key(), doc1);
   auto change2 = MakeTargetChange(WatchTargetChangeState::Removed, {1});
   auto change3 = MakeTargetChange(WatchTargetChangeState::Added, {1});
-  Document doc2 = Doc("docs/2", 2, Map("value", 2));
+  MutableDocument doc2 = Doc("docs/2", 2, Map("value", 2));
   auto change4 = MakeDocChange({1}, {}, doc2.key(), doc2);
 
   // We're waiting for the unwatch and watch ack
@@ -328,7 +328,7 @@ TEST_F(RemoteEventTest, WillIgnoreEventsForPendingTargets) {
 TEST_F(RemoteEventTest, WillIgnoreEventsForRemovedTargets) {
   std::unordered_map<TargetId, TargetData> target_map = ActiveQueries({});
 
-  Document doc1 = Doc("docs/1", 1, Map("value", 1));
+  MutableDocument doc1 = Doc("docs/1", 1, Map("value", 1));
   auto change1 = MakeDocChange({1}, {}, doc1.key(), doc1);
   auto change2 = MakeTargetChange(WatchTargetChangeState::Removed, {1});
 
@@ -349,17 +349,17 @@ TEST_F(RemoteEventTest, WillIgnoreEventsForRemovedTargets) {
 TEST_F(RemoteEventTest, WillKeepResetMappingEvenWithUpdates) {
   std::unordered_map<TargetId, TargetData> target_map = ActiveQueries({1});
 
-  Document doc1 = Doc("docs/1", 1, Map("value", 1));
+  MutableDocument doc1 = Doc("docs/1", 1, Map("value", 1));
   auto change1 = MakeDocChange({1}, {}, doc1.key(), doc1);
 
   // Reset stream, ignoring doc1
   auto change2 = MakeTargetChange(WatchTargetChangeState::Reset, {1});
 
   // Add doc2, doc3
-  Document doc2 = Doc("docs/2", 2, Map("value", 2));
+  MutableDocument doc2 = Doc("docs/2", 2, Map("value", 2));
   auto change3 = MakeDocChange({1}, {}, doc2.key(), doc2);
 
-  Document doc3 = Doc("docs/3", 3, Map("value", 3));
+  MutableDocument doc3 = Doc("docs/3", 3, Map("value", 3));
   auto change4 = MakeDocChange({1}, {}, doc3.key(), doc3);
 
   // Remove doc2 again, should not show up in reset mapping
@@ -409,10 +409,10 @@ TEST_F(RemoteEventTest, WillHandleSingleReset) {
 TEST_F(RemoteEventTest, WillHandleTargetAddAndRemovalInSameBatch) {
   std::unordered_map<TargetId, TargetData> target_map = ActiveQueries({1, 2});
 
-  Document doc1a = Doc("docs/1", 1, Map("value", 1));
+  MutableDocument doc1a = Doc("docs/1", 1, Map("value", 1));
   auto change1 = MakeDocChange({1}, {2}, doc1a.key(), doc1a);
 
-  Document doc1b = Doc("docs/1", 1, Map("value", 2));
+  MutableDocument doc1b = Doc("docs/1", 1, Map("value", 2));
   auto change2 = MakeDocChange({2}, {1}, doc1b.key(), doc1b);
 
   RemoteEvent event = CreateRemoteEvent(
@@ -455,14 +455,14 @@ TEST_F(RemoteEventTest, TargetCurrentChangeWillMarkTheTargetCurrent) {
 TEST_F(RemoteEventTest, TargetAddedChangeWillResetPreviousState) {
   std::unordered_map<TargetId, TargetData> target_map = ActiveQueries({1, 3});
 
-  Document doc1 = Doc("docs/1", 1, Map("value", 1));
+  MutableDocument doc1 = Doc("docs/1", 1, Map("value", 1));
   auto change1 = MakeDocChange({1, 3}, {2}, doc1.key(), doc1);
   auto change2 = MakeTargetChange(WatchTargetChangeState::Current, {1, 2, 3},
                                   resume_token1_);
   auto change3 = MakeTargetChange(WatchTargetChangeState::Removed, {1});
   auto change4 = MakeTargetChange(WatchTargetChangeState::Removed, {2});
   auto change5 = MakeTargetChange(WatchTargetChangeState::Added, {1});
-  Document doc2 = Doc("docs/2", 2, Map("value", 2));
+  MutableDocument doc2 = Doc("docs/2", 2, Map("value", 2));
   auto change6 = MakeDocChange({1}, {3}, doc2.key(), doc2);
 
   std::unordered_map<TargetId, int> outstanding_responses{{1, 2}, {2, 1}};
@@ -518,9 +518,9 @@ TEST_F(RemoteEventTest, NoChangeWillStillMarkTheAffectedTargets) {
 TEST_F(RemoteEventTest, ExistenceFilterMismatchClearsTarget) {
   std::unordered_map<TargetId, TargetData> target_map = ActiveQueries({1, 2});
 
-  Document doc1 = Doc("docs/1", 1, Map("value", 1));
+  MutableDocument doc1 = Doc("docs/1", 1, Map("value", 1));
   auto change1 = MakeDocChange({1}, {}, doc1.key(), doc1);
-  Document doc2 = Doc("docs/2", 2, Map("value", 2));
+  MutableDocument doc2 = Doc("docs/2", 2, Map("value", 2));
   auto change2 = MakeDocChange({1}, {}, doc2.key(), doc2);
   auto change3 =
       MakeTargetChange(WatchTargetChangeState::Current, {1}, resume_token1_);
@@ -575,7 +575,7 @@ TEST_F(RemoteEventTest, ExistenceFilterMismatchRemovesCurrentChanges) {
       WatchTargetChangeState::Current, {1}, resume_token1_};
   aggregator.HandleTargetChange(mark_current);
 
-  Document doc1 = Doc("docs/1", 1, Map("value", 1));
+  MutableDocument doc1 = Doc("docs/1", 1, Map("value", 1));
   DocumentWatchChange add_doc{{1}, {}, doc1.key(), doc1};
   aggregator.HandleDocumentChange(add_doc);
 
@@ -601,9 +601,9 @@ TEST_F(RemoteEventTest, ExistenceFilterMismatchRemovesCurrentChanges) {
 TEST_F(RemoteEventTest, DocumentUpdate) {
   std::unordered_map<TargetId, TargetData> target_map = ActiveQueries({1});
 
-  Document doc1 = Doc("docs/1", 1, Map("value", 1));
+  MutableDocument doc1 = Doc("docs/1", 1, Map("value", 1));
   auto change1 = MakeDocChange({1}, {}, doc1.key(), doc1);
-  Document doc2 = Doc("docs/2", 2, Map("value", 2));
+  MutableDocument doc2 = Doc("docs/2", 2, Map("value", 2));
   auto change2 = MakeDocChange({1}, {}, doc2.key(), doc2);
 
   WatchChangeAggregator aggregator =
@@ -624,11 +624,11 @@ TEST_F(RemoteEventTest, DocumentUpdate) {
   DocumentWatchChange change3{{}, {1}, deleted_doc1.key(), deleted_doc1};
   aggregator.HandleDocumentChange(change3);
 
-  Document updated_doc2 = Doc("docs/2", 3, Map("value", 2));
+  MutableDocument updated_doc2 = Doc("docs/2", 3, Map("value", 2));
   DocumentWatchChange change4{{1}, {}, updated_doc2.key(), updated_doc2};
   aggregator.HandleDocumentChange(change4);
 
-  Document doc3 = Doc("docs/3", 3, Map("value", 3));
+  MutableDocument doc3 = Doc("docs/3", 3, Map("value", 3));
   DocumentWatchChange change5{{1}, {}, doc3.key(), doc3};
   aggregator.HandleDocumentChange(change5);
 
@@ -756,10 +756,10 @@ TEST_F(RemoteEventTest, DoesntSynthesizeDeletesForExistingDoc) {
 TEST_F(RemoteEventTest, SeparatesDocumentUpdates) {
   std::unordered_map<TargetId, TargetData> target_map = ActiveLimboQueries({1});
 
-  Document new_doc = Doc("docs/new", 1, Map("key", "value"));
+  MutableDocument new_doc = Doc("docs/new", 1, Map("key", "value"));
   auto new_doc_change = MakeDocChange({1}, {}, new_doc.key(), new_doc);
 
-  Document existing_doc = Doc("docs/existing", 1, Map("some", "data"));
+  MutableDocument existing_doc = Doc("docs/existing", 1, Map("some", "data"));
   auto existing_doc_change =
       MakeDocChange({1}, {}, existing_doc.key(), existing_doc);
 
@@ -790,9 +790,9 @@ TEST_F(RemoteEventTest, TracksLimboDocuments) {
   target_map.insert(additional_targets.begin(), additional_targets.end());
 
   // Add 3 docs: 1 is limbo and non-limbo, 2 is limbo-only, 3 is non-limbo
-  Document doc1 = Doc("docs/1", 1, Map("key", "value"));
-  Document doc2 = Doc("docs/2", 1, Map("key", "value"));
-  Document doc3 = Doc("docs/3", 1, Map("key", "value"));
+  MutableDocument doc1 = Doc("docs/1", 1, Map("key", "value"));
+  MutableDocument doc2 = Doc("docs/2", 1, Map("key", "value"));
+  MutableDocument doc3 = Doc("docs/3", 1, Map("key", "value"));
 
   // Target 2 is a limbo target
   auto doc_change1 = MakeDocChange({1, 2}, {}, doc1.key(), doc1);

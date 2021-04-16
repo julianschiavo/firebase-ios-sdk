@@ -16,7 +16,7 @@
 
 #include "Firestore/core/src/model/precondition.h"
 
-#include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/snapshot_version.h"
 #include "Firestore/core/src/util/hard_assert.h"
 #include "Firestore/core/src/util/hashing.h"
@@ -47,7 +47,7 @@ Precondition Precondition::None() {
   return Precondition{Type::None, SnapshotVersion::None(), false};
 }
 
-bool Precondition::IsValidFor(const Document& document) const {
+bool Precondition::IsValidFor(const MutableDocument& document) const {
   switch (type_) {
     case Type::UpdateTime:
       return document.is_found_document() && document.version() == update_time_;

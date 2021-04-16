@@ -36,8 +36,8 @@
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/local/target_data.h"
 #include "Firestore/core/src/model/delete_mutation.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/field_path.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/patch_mutation.h"
 #include "Firestore/core/src/model/resource_path.h"
 #include "Firestore/core/src/model/server_timestamp_util.h"
@@ -76,7 +76,6 @@ using model::ArrayTransform;
 using model::DatabaseId;
 using model::DeepClone;
 using model::DeleteMutation;
-using model::Document;
 using model::DocumentKey;
 using model::DocumentState;
 using model::EncodeServerTimestamp;
@@ -85,6 +84,7 @@ using model::FieldPath;
 using model::FieldTransform;
 using model::IsNaNValue;
 using model::IsNullValue;
+using model::MutableDocument;
 using model::Mutation;
 using model::MutationResult;
 using model::NaNValue;
@@ -300,7 +300,7 @@ google_firestore_v1_Document Serializer::EncodeDocument(
   return result;
 }
 
-Document Serializer::DecodeMaybeDocument(
+MutableDocument Serializer::DecodeMaybeDocument(
     ReadContext* context,
     const google_firestore_v1_BatchGetDocumentsResponse& response) const {
   switch (response.which_result) {
@@ -316,7 +316,7 @@ Document Serializer::DecodeMaybeDocument(
   UNREACHABLE();
 }
 
-Document Serializer::DecodeFoundDocument(
+MutableDocument Serializer::DecodeFoundDocument(
     ReadContext* context,
     const google_firestore_v1_BatchGetDocumentsResponse& response) const {
   HARD_ASSERT(response.which_result ==
@@ -332,10 +332,10 @@ Document Serializer::DecodeFoundDocument(
     context->Fail("Got a document response with no snapshot version");
   }
 
-  return Document::FoundDocument(key, version, std::move(value));
+  return MutableDocument::FoundDocument(key, version, std::move(value));
 }
 
-Document Serializer::DecodeMissingDocument(
+MutableDocument Serializer::DecodeMissingDocument(
     ReadContext* context,
     const google_firestore_v1_BatchGetDocumentsResponse& response) const {
   HARD_ASSERT(response.which_result ==
@@ -349,7 +349,7 @@ Document Serializer::DecodeMissingDocument(
     context->Fail("Got a no document response with no snapshot version");
   }
 
-  return Document::NoDocument(key, version);
+  return MutableDocument::NoDocument(key, version);
 }
 
 google_firestore_v1_Write Serializer::EncodeMutation(
@@ -1348,7 +1348,8 @@ std::unique_ptr<WatchChange> Serializer::DecodeDocumentChange(
   // would defeat the purpose). Note, however, that even without this
   // optimization C++ implementation is on par with the preceding Objective-C
   // implementation.
-  Document document(std::move(value), key, version, DocumentState::kSynced);
+  MutableDocument document(std::move(value), key, version,
+                           DocumentState::kSynced);
 
   std::vector<TargetId> updated_target_ids(
       change.target_ids, change.target_ids + change.target_ids_count);

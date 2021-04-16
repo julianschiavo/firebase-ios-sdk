@@ -19,9 +19,9 @@
 #include <ostream>
 #include <utility>
 
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/document_key_set.h"
 #include "Firestore/core/src/model/document_map.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation_batch_result.h"
 #include "Firestore/core/src/util/hard_assert.h"
 #include "Firestore/core/src/util/to_string.h"
@@ -42,7 +42,7 @@ MutationBatch::MutationBatch(int batch_id,
 }
 
 void MutationBatch::ApplyToRemoteDocument(
-    Document* document,
+    MutableDocument* document,
     const DocumentKey& document_key,
     const MutationBatchResult& mutation_batch_result) const {
   HARD_ASSERT(!document || document->key() == document_key,
@@ -64,7 +64,7 @@ void MutationBatch::ApplyToRemoteDocument(
 }
 
 void MutationBatch::ApplyToLocalDocument(
-    Document& document, const DocumentKey& document_key) const {
+    MutableDocument& document, const DocumentKey& document_key) const {
   HARD_ASSERT(document.key() == document_key,
               "key %s doesn't match document key %s", document_key.ToString(),
               document.key().ToString());
@@ -96,7 +96,7 @@ void MutationBatch::ApplyToLocalDocumentSet(DocumentMap& document_map) const {
     auto it = document_map.find(key);
     HARD_ASSERT(it != document_map.end(), "document for key %s not found",
                 key.ToString());
-    Document& document = it.second;
+    MutableDocument& document = it.second;
     ApplyToLocalDocument(&document, key);
     if (!document.is_valid_document()) {
       document.ConvertToUnknownDocument(SnapshotVersion::None());

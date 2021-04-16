@@ -45,11 +45,11 @@ class LevelDbRemoteDocumentCache : public RemoteDocumentCache {
                              LocalSerializer* serializer);
   ~LevelDbRemoteDocumentCache();
 
-  void Add(const model::Document& document,
+  void Add(const model::MutableDocument& document,
            const model::SnapshotVersion& read_time) override;
   void Remove(const model::DocumentKey& key) override;
 
-  model::Document Get(const model::DocumentKey& key) override;
+  model::MutableDocument Get(const model::DocumentKey& key) override;
   model::MutableDocumentMap GetAll(const model::DocumentKeySet& keys) override;
   model::MutableDocumentMap GetMatching(
       const core::Query& query,
@@ -62,8 +62,8 @@ class LevelDbRemoteDocumentCache : public RemoteDocumentCache {
    */
   model::MutableDocumentMap GetAllExisting(const model::DocumentKeySet& keys);
 
-  model::Document DecodeMaybeDocument(absl::string_view encoded,
-                                      const model::DocumentKey& key);
+  model::MutableDocument DecodeMaybeDocument(absl::string_view encoded,
+                                             const model::DocumentKey& key);
 
   // The LevelDbRemoteDocumentCache instance is owned by LevelDbPersistence.
   LevelDbPersistence* db_;

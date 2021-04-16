@@ -51,7 +51,6 @@ namespace {
 using auth::CredentialsProvider;
 using auth::Token;
 using core::DatabaseInfo;
-using model::Document;
 using model::DocumentKey;
 using model::Mutation;
 using util::AsyncQueue;

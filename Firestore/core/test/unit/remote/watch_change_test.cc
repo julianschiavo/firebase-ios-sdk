@@ -16,7 +16,7 @@
 
 #include "Firestore/core/src/remote/watch_change.h"
 
-#include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/remote/existence_filter.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
 #include "gtest/gtest.h"
@@ -25,8 +25,8 @@ namespace firebase {
 namespace firestore {
 namespace remote {
 
-using model::Document;
 using model::DocumentState;
+using model::MutableDocument;
 
 using testutil::Doc;
 using testutil::Map;

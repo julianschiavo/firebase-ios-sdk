@@ -28,10 +28,10 @@
 #include "Firestore/core/src/core/target.h"
 #include "Firestore/core/src/local/target_data.h"
 #include "Firestore/core/src/model/delete_mutation.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/field_mask.h"
 #include "Firestore/core/src/model/field_value.h"
 #include "Firestore/core/src/model/maybe_document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation.h"
 #include "Firestore/core/src/model/mutation_batch.h"
 #include "Firestore/core/src/model/no_document.h"
@@ -66,12 +66,12 @@ using core::Query;
 using core::Target;
 using ::google::protobuf::util::MessageDifferencer;
 using model::DatabaseId;
-using model::Document;
 using model::DocumentKey;
 using model::DocumentState;
 using model::FieldMask;
 using model::FieldPath;
 using model::ListenSequenceNumber;
+using model::MutableDocument;
 using model::Mutation;
 using model::MutationBatch;
 using model::NoDocument;
@@ -497,7 +497,7 @@ TEST_F(LocalSerializerTest, EncodesMutationBatch) {
 }
 
 TEST_F(LocalSerializerTest, EncodesDocumentAsMaybeDocument) {
-  Document doc = Doc("some/path", /*version=*/42, Map("foo", "bar"));
+  MutableDocument doc = Doc("some/path", /*version=*/42, Map("foo", "bar"));
 
   ::firestore::client::MaybeDocument maybe_doc_proto;
   maybe_doc_proto.mutable_document()->set_name(

@@ -31,7 +31,7 @@ namespace firebase {
 namespace firestore {
 namespace model {
 
-class Document;
+class MutableDocument;
 
 /**
  * A BatchID that was searched for and not found or a batch ID value known to
@@ -96,7 +96,7 @@ class MutationBatch {
    *     the backend.
    */
   void ApplyToRemoteDocument(
-      Document& document,
+      MutableDocument& document,
       const DocumentKey& document_key,
       const MutationBatchResult& mutation_batch_result) const;
 
@@ -112,7 +112,7 @@ class MutationBatch {
    *     there's no existing document.
    * @param document_key The key of the document to apply mutations to.
    */
-  void ApplyToLocalDocument(Document& document,
+  void ApplyToLocalDocument(MutableDocument& document,
                             const DocumentKey& document_key) const;
 
   /**

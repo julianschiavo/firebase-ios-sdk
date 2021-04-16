@@ -19,8 +19,8 @@
 #include <cstdlib>
 #include <utility>
 
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/field_path.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/util/hard_assert.h"
 #include "Firestore/core/src/util/to_string.h"
 
@@ -71,7 +71,7 @@ PatchMutation::Rep::Rep(DocumentKey&& key,
 }
 
 void PatchMutation::Rep::ApplyToRemoteDocument(
-    Document& document, const MutationResult& mutation_result) const {
+    MutableDocument& document, const MutationResult& mutation_result) const {
   VerifyKeyMatches(document);
 
   if (!precondition().IsValidFor(document)) {
@@ -92,7 +92,7 @@ void PatchMutation::Rep::ApplyToRemoteDocument(
 }
 
 void PatchMutation::Rep::ApplyToLocalView(
-    Document& document, const Timestamp& local_write_time) const {
+    MutableDocument& document, const Timestamp& local_write_time) const {
   VerifyKeyMatches(document);
 
   if (!precondition().IsValidFor(document)) {

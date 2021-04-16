@@ -129,7 +129,7 @@ class LocalStore : public bundle::BundleCallback {
    * Returns the current value of a document with a given key, or an invalid
    * document if not found.
    */
-  const model::Document ReadDocument(const model::DocumentKey& key);
+  const model::MutableDocument ReadDocument(const model::DocumentKey& key);
 
   /**
    * Acknowledges the given batch.

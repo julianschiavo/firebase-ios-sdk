@@ -49,12 +49,12 @@ using local::QueryEngine;
 using local::RemoteDocumentCache;
 using local::TargetCache;
 using model::BatchId;
-using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
 using model::DocumentSet;
 using model::DocumentState;
+using model::MutableDocument;
 using model::SnapshotVersion;
 using model::TargetId;
 using testutil::Doc;
@@ -68,23 +68,25 @@ using testutil::Version;
 
 const int kTestTargetId = 1;
 
-const Document kMatchingDocA =
+const MutableDocument kMatchingDocA =
     Doc("coll/a", 1, Map("matches", true, "order", 1));
-const Document kNonMatchingDocA =
+const MutableDocument kNonMatchingDocA =
     Doc("coll/a", 1, Map("matches", false, "order", 1));
-const Document pPendingMatchingDocA = Doc("coll/a",
-                                          1,
-                                          Map("matches", true, "order", 1),
-                                          DocumentState::kLocalMutations);
-const Document kPendingNonMatchingDocA = Doc("coll/a",
-                                             1,
-                                             Map("matches", false, "order", 1),
-                                             DocumentState::kLocalMutations);
-const Document kUpdatedDocA =
+const MutableDocument pPendingMatchingDocA =
+    Doc("coll/a",
+        1,
+        Map("matches", true, "order", 1),
+        DocumentState::kLocalMutations);
+const MutableDocument kPendingNonMatchingDocA =
+    Doc("coll/a",
+        1,
+        Map("matches", false, "order", 1),
+        DocumentState::kLocalMutations);
+const MutableDocument kUpdatedDocA =
     Doc("coll/a", 11, Map("matches", true, "order", 1));
-const Document kMatchingDocB =
+const MutableDocument kMatchingDocB =
     Doc("coll/b", 1, Map("matches", true, "order", 2));
-const Document kUpdatedMatchingDocB =
+const MutableDocument kUpdatedMatchingDocB =
     Doc("coll/b", 11, Map("matches", true, "order", 2));
 
 const SnapshotVersion kLastLimboFreeSnapshot = Version(10);
@@ -142,9 +144,9 @@ class QueryEngineTest : public ::testing::Test {
   }
 
   /** Adds the provided documents to the remote document cache. */
-  void AddDocuments(const std::vector<Document>& docs) {
+  void AddDocuments(const std::vector<MutableDocument>& docs) {
     persistence_->Run("AddDocuments", [&] {
-      for (const Document& doc : docs) {
+      for (const MutableDocument& doc : docs) {
         remote_document_cache_->Add(doc, doc.version());
       }
     });

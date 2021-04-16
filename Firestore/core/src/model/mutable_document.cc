@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 
 #include <sstream>
 
@@ -22,7 +22,8 @@ namespace firebase {
 namespace firestore {
 namespace model {
 
-Document Document::InvalidDocument(const DocumentKey& document_key) {
+MutableDocument MutableDocument::InvalidDocument(
+    const DocumentKey& document_key) {
   return {document_key,
           DocumentType::kInvalid,
           SnapshotVersion::None(),
@@ -30,26 +31,26 @@ Document Document::InvalidDocument(const DocumentKey& document_key) {
           DocumentState::kSynced};
 }
 
-Document Document::FoundDocument(const DocumentKey& document_key,
-                                 const SnapshotVersion& version,
-                                 ObjectValue value) {
+MutableDocument MutableDocument::FoundDocument(const DocumentKey& document_key,
+                                               const SnapshotVersion& version,
+                                               ObjectValue value) {
   return std::move(InvalidDocument(document_key)
                        .ConvertToFoundDocument(version, std::move(value)));
 }
 
-Document Document::NoDocument(const DocumentKey& document_key,
-                              const SnapshotVersion& version) {
+MutableDocument MutableDocument::NoDocument(const DocumentKey& document_key,
+                                            const SnapshotVersion& version) {
   return std::move(InvalidDocument(document_key).ConvertToNoDocument(version));
 }
 
-Document Document::UnknownDocument(const DocumentKey& document_key,
-                                   const SnapshotVersion& version) {
+MutableDocument MutableDocument::UnknownDocument(
+    const DocumentKey& document_key, const SnapshotVersion& version) {
   return std::move(
       InvalidDocument(document_key).ConvertToUnknownDocument(version));
 }
 
-Document& Document::ConvertToFoundDocument(const SnapshotVersion& version,
-                                           ObjectValue value) {
+MutableDocument& MutableDocument::ConvertToFoundDocument(
+    const SnapshotVersion& version, ObjectValue value) {
   std::shared_ptr<const ObjectValue> data{new ObjectValue(std::move(value))};
   version_ = version;
   document_type_ = DocumentType::kFoundDocument;
@@ -58,7 +59,8 @@ Document& Document::ConvertToFoundDocument(const SnapshotVersion& version,
   return *this;
 }
 
-Document& Document::ConvertToNoDocument(const SnapshotVersion& version) {
+MutableDocument& MutableDocument::ConvertToNoDocument(
+    const SnapshotVersion& version) {
   version_ = version;
   document_type_ = DocumentType::kNoDocument;
   value_ = {};
@@ -66,7 +68,8 @@ Document& Document::ConvertToNoDocument(const SnapshotVersion& version) {
   return *this;
 }
 
-Document& Document::ConvertToUnknownDocument(const SnapshotVersion& version) {
+MutableDocument& MutableDocument::ConvertToUnknownDocument(
+    const SnapshotVersion& version) {
   version_ = version;
   document_type_ = DocumentType::kUnknownDocument;
   value_ = {};
@@ -74,21 +77,21 @@ Document& Document::ConvertToUnknownDocument(const SnapshotVersion& version) {
   return *this;
 }
 
-Document& Document::SetHasCommittedMutations() {
+MutableDocument& MutableDocument::SetHasCommittedMutations() {
   document_state_ = DocumentState::kHasCommittedMutations;
   return *this;
 }
 
-Document& Document::SetHasLocalMutations() {
+MutableDocument& MutableDocument::SetHasLocalMutations() {
   document_state_ = DocumentState::kHasLocalMutations;
   return *this;
 }
 
-size_t Document::Hash() const {
+size_t MutableDocument::Hash() const {
   return key_.Hash();
 }
 
-std::string Document::ToString() const {
+std::string MutableDocument::ToString() const {
   std::stringstream stream;
   stream << "Document(key=" << key_ << ", type=" << document_type_
          << ", version=" << version_ << ", value=" << value_
@@ -96,34 +99,36 @@ std::string Document::ToString() const {
   return stream.str();
 }
 
-bool operator==(const Document& lhs, const Document& rhs) {
+bool operator==(const MutableDocument& lhs, const MutableDocument& rhs) {
   return lhs.key_ == rhs.key_ && lhs.document_type_ == rhs.document_type_ &&
          lhs.version_ == rhs.version_ &&
          lhs.document_state_ == rhs.document_state_ && lhs.value_ == rhs.value_;
 }
 
-std::ostream& operator<<(std::ostream& os, Document::DocumentState state) {
+std::ostream& operator<<(std::ostream& os,
+                         MutableDocument::DocumentState state) {
   switch (state) {
-    case Document::DocumentState::kHasCommittedMutations:
+    case MutableDocument::DocumentState::kHasCommittedMutations:
       return os << "kHasCommittedMutations";
-    case Document::DocumentState::kHasLocalMutations:
+    case MutableDocument::DocumentState::kHasLocalMutations:
       return os << "kHasLocalMutations";
-    case Document::DocumentState::kSynced:
+    case MutableDocument::DocumentState::kSynced:
       return os << "kSynced";
   }
 
   UNREACHABLE();
 }
 
-std::ostream& operator<<(std::ostream& os, Document::DocumentType state) {
+std::ostream& operator<<(std::ostream& os,
+                         MutableDocument::DocumentType state) {
   switch (state) {
-    case Document::DocumentType::kInvalid:
+    case MutableDocument::DocumentType::kInvalid:
       return os << "kInvalid";
-    case Document::DocumentType::kFoundDocument:
+    case MutableDocument::DocumentType::kFoundDocument:
       return os << "kFoundDocument";
-    case Document::DocumentType::kNoDocument:
+    case MutableDocument::DocumentType::kNoDocument:
       return os << "kNoDocument";
-    case Document::DocumentType::kUnknownDocument:
+    case MutableDocument::DocumentType::kUnknownDocument:
       return os << "kUnknownDocument";
   }
 

@@ -21,8 +21,8 @@
 #include <sstream>
 #include <utility>
 
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/field_path.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/object_value.h"
 #include "Firestore/core/src/util/hard_assert.h"
 #include "Firestore/core/src/util/to_string.h"
@@ -48,17 +48,17 @@ bool operator==(const MutationResult& lhs, const MutationResult& rhs) {
 }
 
 void Mutation::ApplyToRemoteDocument(
-    Document& document, const MutationResult& mutation_result) const {
+    MutableDocument& document, const MutationResult& mutation_result) const {
   return rep().ApplyToRemoteDocument(document, mutation_result);
 }
 
-void Mutation::ApplyToLocalView(Document& document,
+void Mutation::ApplyToLocalView(MutableDocument& document,
                                 const Timestamp& local_write_time) const {
   return rep().ApplyToLocalView(document, local_write_time);
 }
 
 absl::optional<ObjectValue> Mutation::Rep::ExtractTransformBaseValue(
-    const Document& document) const {
+    const MutableDocument& document) const {
   absl::optional<ObjectValue> base_object;
 
   for (const FieldTransform& transform : field_transforms_) {
@@ -97,13 +97,13 @@ bool Mutation::Rep::Equals(const Mutation::Rep& other) const {
          field_transforms_ == other.field_transforms_;
 }
 
-void Mutation::Rep::VerifyKeyMatches(const Document& document) const {
+void Mutation::Rep::VerifyKeyMatches(const MutableDocument& document) const {
   HARD_ASSERT(document.key() == key(),
               "Can only apply a mutation to a document with the same key");
 }
 
 SnapshotVersion Mutation::Rep::GetPostMutationVersion(
-    const Document& document) {
+    const MutableDocument& document) {
   if (document.is_found_document()) {
     return document.version();
   } else {
@@ -113,7 +113,7 @@ SnapshotVersion Mutation::Rep::GetPostMutationVersion(
 
 void Mutation::Rep::ApplyServerTransformResults(
     ObjectValue& value,
-    const Document& existing_data,
+    const MutableDocument& existing_data,
     const google_firestore_v1_ArrayValue& server_transform_results) const {
   HARD_ASSERT(field_transforms_.size() == server_transform_results.values_count,
               "server transform result size (%s) should match field transforms "
@@ -134,7 +134,7 @@ void Mutation::Rep::ApplyServerTransformResults(
 
 void Mutation::Rep::ApplyLocalTransformResults(
     ObjectValue& value,
-    const Document& existing_data,
+    const MutableDocument& existing_data,
     const Timestamp& local_write_time) const {
   for (const FieldTransform& field_transform : field_transforms_) {
     const TransformOperation& transform = field_transform.transformation();

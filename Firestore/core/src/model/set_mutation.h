@@ -74,10 +74,10 @@ class SetMutation : public Mutation {
     }
 
     void ApplyToRemoteDocument(
-        Document& document,
+        MutableDocument& document,
         const MutationResult& mutation_result) const override;
 
-    void ApplyToLocalView(Document& document,
+    void ApplyToLocalView(MutableDocument& document,
                           const Timestamp& local_write_time) const override;
 
     bool Equals(const Mutation::Rep& other) const override;

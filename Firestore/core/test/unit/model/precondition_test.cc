@@ -16,7 +16,7 @@
 
 #include "Firestore/core/src/model/precondition.h"
 
-#include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/no_document.h"
 #include "Firestore/core/src/model/snapshot_version.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
@@ -33,7 +33,7 @@ TEST(Precondition, None) {
   EXPECT_EQ(SnapshotVersion::None(), none.update_time());
 
   NoDocument deleted_doc = testutil::DeletedDoc("foo/doc", 1234567);
-  Document doc = testutil::Doc("bar/doc", 7654321);
+  MutableDocument doc = testutil::Doc("bar/doc", 7654321);
   EXPECT_TRUE(none.IsValidFor(deleted_doc));
   EXPECT_TRUE(none.IsValidFor(doc));
   EXPECT_TRUE(none.IsValidFor(absl::nullopt));
@@ -50,7 +50,7 @@ TEST(Precondition, Exists) {
   EXPECT_EQ(SnapshotVersion::None(), no_exists.update_time());
 
   NoDocument deleted_doc = testutil::DeletedDoc("foo/doc", 1234567);
-  Document doc = testutil::Doc("bar/doc", 7654321);
+  MutableDocument doc = testutil::Doc("bar/doc", 7654321);
   EXPECT_FALSE(exists.IsValidFor(deleted_doc));
   EXPECT_TRUE(exists.IsValidFor(doc));
   EXPECT_FALSE(exists.IsValidFor(absl::nullopt));
@@ -67,8 +67,8 @@ TEST(Precondition, UpdateTime) {
   EXPECT_EQ(testutil::Version(1234567), update_time.update_time());
 
   NoDocument deleted_doc = testutil::DeletedDoc("foo/doc", 1234567);
-  Document not_match = testutil::Doc("bar/doc", 7654321);
-  Document match = testutil::Doc("baz/doc", 1234567);
+  MutableDocument not_match = testutil::Doc("bar/doc", 7654321);
+  MutableDocument match = testutil::Doc("baz/doc", 1234567);
   EXPECT_FALSE(update_time.IsValidFor(deleted_doc));
   EXPECT_FALSE(update_time.IsValidFor(not_match));
   EXPECT_TRUE(update_time.IsValidFor(match));

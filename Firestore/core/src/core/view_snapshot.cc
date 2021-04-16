@@ -27,19 +27,19 @@ namespace firebase {
 namespace firestore {
 namespace core {
 
-using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentSet;
+using model::MutableDocument;
 using util::StringFormat;
 
 // DocumentViewChange
 
-DocumentViewChange::DocumentViewChange(Document document, Type type)
+DocumentViewChange::DocumentViewChange(MutableDocument document, Type type)
     : document_{std::move(document)}, type_{type} {
 }
 
-const Document& DocumentViewChange::document() const {
+const MutableDocument& DocumentViewChange::document() const {
   return document_;
 }
 
@@ -161,7 +161,7 @@ ViewSnapshot ViewSnapshot::FromInitialDocuments(
     bool from_cache,
     bool excludes_metadata_changes) {
   std::vector<DocumentViewChange> view_changes;
-  for (const Document& doc : documents) {
+  for (const MutableDocument& doc : documents) {
     view_changes.emplace_back(doc, DocumentViewChange::Type::Added);
   }
 

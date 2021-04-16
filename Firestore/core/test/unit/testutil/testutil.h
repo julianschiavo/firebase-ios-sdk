@@ -209,24 +209,24 @@ model::ResourcePath Resource(absl::string_view field);
  */
 model::SnapshotVersion Version(int64_t version);
 
-model::Document Doc(absl::string_view key,
-                    int64_t version = 0,
-                    const google_firestore_v1_Value::Map& data =
-                        google_firestore_v1_Value::Map());
+model::MutableDocument Doc(absl::string_view key,
+                           int64_t version = 0,
+                           const google_firestore_v1_Value::Map& data =
+                               google_firestore_v1_Value::Map());
 
-model::Document Doc(absl::string_view key,
-                    int64_t version,
-                    const google_firestore_v1_Value::Map& data,
-                    model::DocumentState document_state);
+model::MutableDocument Doc(absl::string_view key,
+                           int64_t version,
+                           const google_firestore_v1_Value::Map& data,
+                           model::DocumentState document_state);
 
-model::Document Doc(absl::string_view key,
-                    int64_t version,
-                    const google_firestore_v1_Value& data);
+model::MutableDocument Doc(absl::string_view key,
+                           int64_t version,
+                           const google_firestore_v1_Value& data);
 
-model::Document Doc(absl::string_view key,
-                    int64_t version,
-                    const google_firestore_v1_Value& data,
-                    model::DocumentState document_state);
+model::MutableDocument Doc(absl::string_view key,
+                           int64_t version,
+                           const google_firestore_v1_Value& data,
+                           model::DocumentState document_state);
 
 /** A convenience method for creating deleted docs for tests. */
 model::NoDocument DeletedDoc(absl::string_view key,
@@ -252,7 +252,7 @@ model::DocumentComparator DocComparator(absl::string_view field_path);
  * given documents.
  */
 model::DocumentSet DocSet(model::DocumentComparator comp,
-                          std::vector<model::Document> docs);
+                          std::vector<model::MutableDocument> docs);
 
 core::FieldFilter Filter(absl::string_view key,
                          absl::string_view op,

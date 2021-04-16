@@ -123,7 +123,7 @@ class DatastoreSerializer {
    * Merges results of the streaming read together. The array is sorted by the
    * document key.
    */
-  util::StatusOr<std::vector<model::Document>> MergeLookupResponses(
+  util::StatusOr<std::vector<model::MutableDocument>> MergeLookupResponses(
       const std::vector<grpc::ByteBuffer>& responses) const;
 
   const Serializer& serializer() const {

@@ -42,7 +42,8 @@ class Sizer {
    * Calculates the size of the given maybe_doc in bytes. Note that even
    * NoDocuments have an associated size.
    */
-  virtual int64_t CalculateByteSize(const model::Document& maybe_doc) const = 0;
+  virtual int64_t CalculateByteSize(
+      const model::MutableDocument& maybe_doc) const = 0;
 
   /**
    * Calculates the size of the given mutation_batch in bytes.

@@ -46,13 +46,13 @@ using core::Query;
 using core::Target;
 using core::TargetIdGenerator;
 using model::BatchId;
-using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
 using model::DocumentUpdateMap;
 using model::DocumentVersionMap;
 using model::ListenSequenceNumber;
+using model::MutableDocument;
 using model::Mutation;
 using model::MutationBatch;
 using model::MutationBatchResult;
@@ -163,7 +163,8 @@ LocalWriteResult LocalStore::WriteLocally(std::vector<Mutation>&& mutations) {
     // sends us an update that already includes our transform.
     std::vector<Mutation> base_mutations;
     for (const Mutation& mutation : mutations) {
-      absl::optional<Document> base_document = documents.get(mutation.key());
+      absl::optional<MutableDocument> base_document =
+          documents.get(mutation.key());
 
       absl::optional<ObjectValue> base_value =
           mutation.ExtractTransformBaseValue(*base_document);
@@ -201,7 +202,7 @@ void LocalStore::ApplyBatchResult(const MutationBatchResult& batch_result) {
   const DocumentVersionMap& versions = batch_result.doc_versions();
 
   for (const DocumentKey& doc_key : doc_keys) {
-    Document doc = remote_document_cache_->Get(doc_key);
+    MutableDocument doc = remote_document_cache_->Get(doc_key);
 
     auto ack_version_iter = versions.find(doc_key);
     HARD_ASSERT(ack_version_iter != versions.end(),
@@ -409,7 +410,7 @@ void LocalStore::ApplyBatchResult(const MutationBatchResult& batch_result) {
     });
   }
 
-  const Document LocalStore::ReadDocument(const DocumentKey& key) {
+  const MutableDocument LocalStore::ReadDocument(const DocumentKey& key) {
     return persistence_->Run(
         "ReadDocument", [&] { return local_documents_->GetDocument(key); });
   }
@@ -606,8 +607,8 @@ void LocalStore::ApplyBatchResult(const MutationBatchResult& batch_result) {
 
     for (const auto& kv : documents) {
       const DocumentKey& key = kv.first;
-      const Document& doc = kv.second;
-      absl::optional<Document> existing_doc;
+      const MutableDocument& doc = kv.second;
+      absl::optional<MutableDocument> existing_doc;
       auto found_existing = existing_docs.get(key);
       if (found_existing) {
         existing_doc = *found_existing;
@@ -620,7 +621,7 @@ void LocalStore::ApplyBatchResult(const MutationBatchResult& batch_result) {
       // Note: The order of the steps below is important, since we want to
       // ensure that rejected limbo resolutions (which fabricate NoDocuments
       // with SnapshotVersion::None) never add documents to cache.
-      if (doc.type() == Document::Type::NoDocument &&
+      if (doc.type() == MutableDocument::Type::NoDocument &&
           doc.version() == SnapshotVersion::None()) {
         // NoDocuments with SnapshotVersion::None are used in manufactured
         // events. We remove these documents from cache since we lost access.

@@ -27,10 +27,10 @@
 #include "Firestore/core/src/core/event_listener.h"
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/immutable/sorted_map.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/document_key_set.h"
 #include "Firestore/core/src/model/document_set.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/util/statusor.h"
 
 namespace firebase {
@@ -49,9 +49,9 @@ class DocumentViewChange {
 
   DocumentViewChange() = default;
 
-  DocumentViewChange(model::Document document, Type type);
+  DocumentViewChange(model::MutableDocument document, Type type);
 
-  const model::Document& document() const;
+  const model::MutableDocument& document() const;
   DocumentViewChange::Type type() const {
     return type_;
   }
@@ -60,7 +60,7 @@ class DocumentViewChange {
   size_t Hash() const;
 
  private:
-  model::Document document_;
+  model::MutableDocument document_;
   Type type_{};
 };
 

@@ -27,10 +27,10 @@ namespace firestore {
 namespace local {
 
 using core::Query;
-using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::ListenSequenceNumber;
+using model::MutableDocument;
 using model::MutableDocumentMap;
 using model::SnapshotVersion;
 
@@ -39,7 +39,7 @@ MemoryRemoteDocumentCache::MemoryRemoteDocumentCache(
   persistence_ = persistence;
 }
 
-void MemoryRemoteDocumentCache::Add(const Document& document,
+void MemoryRemoteDocumentCache::Add(const MutableDocument& document,
                                     const model::SnapshotVersion& read_time) {
   docs_ = docs_.insert(document.key(), std::make_pair(document, read_time));
 
@@ -51,9 +51,9 @@ void MemoryRemoteDocumentCache::Remove(const DocumentKey& key) {
   docs_ = docs_.erase(key);
 }
 
-Document MemoryRemoteDocumentCache::Get(const DocumentKey& key) {
+MutableDocument MemoryRemoteDocumentCache::Get(const DocumentKey& key) {
   const auto& entry = docs_.get(key);
-  return entry ? entry->first : Document::InvalidDocument(key);
+  return entry ? entry->first : MutableDocument::InvalidDocument(key);
 }
 
 MutableDocumentMap MemoryRemoteDocumentCache::GetAll(
@@ -84,7 +84,7 @@ MutableDocumentMap MemoryRemoteDocumentCache::GetMatching(
     if (!query.path().IsPrefixOf(key.path())) {
       break;
     }
-    const Document& document = it->second.first;
+    const MutableDocument& document = it->second.first;
     if (!document.is_found_document()) {
       continue;
     }
@@ -120,7 +120,7 @@ std::vector<DocumentKey> MemoryRemoteDocumentCache::RemoveOrphanedDocuments(
 int64_t MemoryRemoteDocumentCache::CalculateByteSize(const Sizer& sizer) {
   int64_t count = 0;
   for (const auto& kv : docs_) {
-    const Document& document = kv.second.first;
+    const MutableDocument& document = kv.second.first;
     count += sizer.CalculateByteSize(document);
   }
   return count;

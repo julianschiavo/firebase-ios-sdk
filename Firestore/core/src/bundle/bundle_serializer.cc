@@ -27,8 +27,8 @@
 #include "Firestore/core/src/core/order_by.h"
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/core/target.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/field_path.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/resource_path.h"
 #include "Firestore/core/src/model/value_util.h"
 #include "Firestore/core/src/nanopb/byte_string.h"
@@ -57,9 +57,9 @@ using core::OrderByList;
 using core::Query;
 using core::Target;
 using immutable::AppendOnlyList;
-using model::Document;
 using model::DocumentKey;
 using model::FieldPath;
+using model::MutableDocument;
 using model::NaNValue;
 using model::NullValue;
 using model::ObjectValue;
@@ -793,7 +793,7 @@ BundleDocument BundleSerializer::DecodeDocument(JsonReader& reader,
 
   auto map_value = DecodeMapValue(reader, document);
 
-  return BundleDocument(Document::FoundDocument(
+  return BundleDocument(MutableDocument::FoundDocument(
       key, update_time, ObjectValue::FromMap(map_value)));
 }
 

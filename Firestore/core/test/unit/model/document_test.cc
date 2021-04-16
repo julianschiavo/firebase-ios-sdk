@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 
 #include "Firestore/core/src/model/field_path.h"
 #include "Firestore/core/src/model/field_value.h"
@@ -39,7 +39,7 @@ TEST(DocumentTest, Constructor) {
   DocumentKey key = Key("messages/first");
   SnapshotVersion version = Version(1001);
   ObjectValue data = WrapObject("a", 1);
-  Document doc(data, key, version, DocumentState::kSynced);
+  MutableDocument doc(data, key, version, DocumentState::kSynced);
 
   EXPECT_EQ(MaybeDocument::Type::Document, doc.type());
   EXPECT_EQ(doc.key(), Key("messages/first"));
@@ -48,19 +48,20 @@ TEST(DocumentTest, Constructor) {
   EXPECT_EQ(doc.has_local_mutations(), false);
   EXPECT_EQ(doc.has_pending_writes(), false);
 
-  Document doc2(data, key, version, DocumentState::kLocalMutations);
+  MutableDocument doc2(data, key, version, DocumentState::kLocalMutations);
   EXPECT_EQ(doc2.has_local_mutations(), true);
   EXPECT_EQ(doc2.has_pending_writes(), true);
 
-  Document doc3(data, key, version, DocumentState::kCommittedMutations);
+  MutableDocument doc3(data, key, version, DocumentState::kCommittedMutations);
   EXPECT_EQ(doc3.has_committed_mutations(), true);
   EXPECT_EQ(doc3.has_pending_writes(), true);
 }
 
 TEST(DocumentTest, ExtractsFields) {
-  Document doc = Doc("rooms/eros", 1001,
-                     Map("desc", "Discuss all the project related stuff",
-                         "owner", Map("name", "Jonny", "title", "scallywag")));
+  MutableDocument doc =
+      Doc("rooms/eros", 1001,
+          Map("desc", "Discuss all the project related stuff", "owner",
+              Map("name", "Jonny", "title", "scallywag")));
 
   EXPECT_EQ(doc.field(Field("desc")),
             Value("Discuss all the project related stuff"));
@@ -68,7 +69,7 @@ TEST(DocumentTest, ExtractsFields) {
 }
 
 TEST(DocumentTest, Equality) {
-  Document doc = Doc("some/path", 1, Map("a", 1));
+  MutableDocument doc = Doc("some/path", 1, Map("a", 1));
   EXPECT_EQ(doc, Doc("some/path", 1, Map("a", 1)));
   EXPECT_NE(doc, Doc("other/path", 1, Map("a", 1)));
   EXPECT_NE(doc, Doc("some/path", 2, Map("a", 1)));

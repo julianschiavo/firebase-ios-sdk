@@ -38,11 +38,11 @@ class MemoryRemoteDocumentCache : public RemoteDocumentCache {
  public:
   explicit MemoryRemoteDocumentCache(MemoryPersistence* persistence);
 
-  void Add(const model::Document& document,
+  void Add(const model::MutableDocument& document,
            const model::SnapshotVersion& read_time) override;
   void Remove(const model::DocumentKey& key) override;
 
-  model::Document Get(const model::DocumentKey& key) override;
+  model::MutableDocument Get(const model::DocumentKey& key) override;
   model::MutableDocumentMap GetAll(const model::DocumentKeySet& keys) override;
   model::MutableDocumentMap GetMatching(
       const core::Query& query,
@@ -56,8 +56,9 @@ class MemoryRemoteDocumentCache : public RemoteDocumentCache {
 
  private:
   /** Underlying cache of documents and their read times. */
-  immutable::SortedMap<model::DocumentKey,
-                       std::pair<model::Document, model::SnapshotVersion>>
+  immutable::SortedMap<
+      model::DocumentKey,
+      std::pair<model::MutableDocument, model::SnapshotVersion>>
       docs_;
 
   // This instance is owned by MemoryPersistence; avoid a retain cycle.

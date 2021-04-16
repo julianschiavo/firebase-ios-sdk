@@ -96,7 +96,7 @@ class BundleLoader {
                      BundledDocumentMetadata,
                      model::DocumentKeyHash>
       documents_metadata_;
-  model::DocumentMap documents_;
+  model::MutableDocumentMap documents_;
 
   uint64_t bytes_loaded_ = 0;
   absl::optional<model::DocumentKey> current_document_;

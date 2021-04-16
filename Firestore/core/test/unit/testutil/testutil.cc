@@ -27,11 +27,11 @@
 #include "Firestore/core/src/core/order_by.h"
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/model/delete_mutation.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/document_set.h"
 #include "Firestore/core/src/model/field_mask.h"
 #include "Firestore/core/src/model/field_path.h"
 #include "Firestore/core/src/model/field_transform.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/patch_mutation.h"
 #include "Firestore/core/src/model/precondition.h"
 #include "Firestore/core/src/model/set_mutation.h"
@@ -47,13 +47,13 @@ namespace firestore {
 namespace testutil {
 
 using google_firestore_v1_Value;
-using model::Document;
 using model::DocumentComparator;
 using model::DocumentSet;
 using model::DocumentState;
 using model::FieldMask;
 using model::FieldPath;
 using model::FieldTransform;
+using model::MutableDocument;
 using model::ObjectValue;
 using model::Precondition;
 using model::TransformOperation;
@@ -154,32 +154,32 @@ model::SnapshotVersion Version(int64_t version) {
   return model::SnapshotVersion{Timestamp::FromTimePoint(timepoint)};
 }
 
-model::Document Doc(absl::string_view key,
-                    int64_t version,
-                    const google_firestore_v1_Value::Map& data) {
+model::MutableDocument Doc(absl::string_view key,
+                           int64_t version,
+                           const google_firestore_v1_Value::Map& data) {
   return Doc(key, version, data, DocumentState::kSynced);
 }
 
-model::Document Doc(absl::string_view key,
-                    int64_t version,
-                    const google_firestore_v1_Value::Map& data,
-                    model::DocumentState document_state) {
-  return model::Document(model::ObjectValue::FromMap(data), Key(key),
-                         Version(version), document_state);
+model::MutableDocument Doc(absl::string_view key,
+                           int64_t version,
+                           const google_firestore_v1_Value::Map& data,
+                           model::DocumentState document_state) {
+  return model::MutableDocument(model::ObjectValue::FromMap(data), Key(key),
+                                Version(version), document_state);
 }
 
-model::Document Doc(absl::string_view key,
-                    int64_t version,
-                    const google_firestore_v1_Value& data) {
+model::MutableDocument Doc(absl::string_view key,
+                           int64_t version,
+                           const google_firestore_v1_Value& data) {
   return Doc(key, version, data, DocumentState::kSynced);
 }
 
-model::Document Doc(absl::string_view key,
-                    int64_t version,
-                    const google_firestore_v1_Value& data,
-                    model::DocumentState document_state) {
-  return model::Document(model::ObjectValue(data), Key(key), Version(version),
-                         document_state);
+model::MutableDocument Doc(absl::string_view key,
+                           int64_t version,
+                           const google_firestore_v1_Value& data,
+                           model::DocumentState document_state) {
+  return model::MutableDocument(model::ObjectValue(data), Key(key),
+                                Version(version), document_state);
 }
 
 model::NoDocument DeletedDoc(absl::string_view key,
@@ -203,9 +203,9 @@ DocumentComparator DocComparator(absl::string_view field_path) {
   return Query("docs").AddingOrderBy(OrderBy(field_path)).Comparator();
 }
 
-DocumentSet DocSet(DocumentComparator comp, std::vector<Document> docs) {
+DocumentSet DocSet(DocumentComparator comp, std::vector<MutableDocument> docs) {
   DocumentSet set{std::move(comp)};
-  for (const Document& doc : docs) {
+  for (const MutableDocument& doc : docs) {
     set = set.insert(doc);
   }
   return set;

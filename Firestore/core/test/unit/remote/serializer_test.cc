@@ -44,9 +44,9 @@
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/local/target_data.h"
 #include "Firestore/core/src/model/delete_mutation.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/field_path.h"
 #include "Firestore/core/src/model/field_value.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/no_document.h"
 #include "Firestore/core/src/model/patch_mutation.h"
 #include "Firestore/core/src/model/set_mutation.h"
@@ -83,9 +83,9 @@ using local::TargetData;
 using model::ArrayTransform;
 using model::DatabaseId;
 using model::DeleteMutation;
-using model::Document;
 using model::DocumentKey;
 using model::FieldPath;
+using model::MutableDocument;
 using model::Mutation;
 using model::MutationResult;
 using model::NoDocument;
@@ -480,7 +480,7 @@ class SerializerTest : public ::testing::Test {
     EXPECT_EQ(version, actual_model.version());
     switch (actual_model.type()) {
       case MaybeDocument::Type::Document: {
-        Document actual_doc_model(actual_model);
+        MutableDocument actual_doc_model(actual_model);
         EXPECT_EQ(value, actual_doc_model.data());
         break;
       }

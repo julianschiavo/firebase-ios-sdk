@@ -127,7 +127,7 @@ class Serializer {
   /**
    * @brief Converts from nanopb proto to the model Document format.
    */
-  model::Document DecodeMaybeDocument(
+  model::MutableDocument DecodeMaybeDocument(
       util::ReadContext* context,
       const google_firestore_v1_BatchGetDocumentsResponse& response) const;
 
@@ -240,10 +240,10 @@ class Serializer {
   bool IsLocalResourceName(const model::ResourcePath& path) const;
 
  private:
-  model::Document DecodeFoundDocument(
+  model::MutableDocument DecodeFoundDocument(
       util::ReadContext* context,
       const google_firestore_v1_BatchGetDocumentsResponse& response) const;
-  model::Document DecodeMissingDocument(
+  model::MutableDocument DecodeMissingDocument(
       util::ReadContext* context,
       const google_firestore_v1_BatchGetDocumentsResponse& response) const;
 

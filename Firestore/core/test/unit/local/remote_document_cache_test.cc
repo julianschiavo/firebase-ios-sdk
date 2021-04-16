@@ -39,11 +39,11 @@ namespace local {
 namespace {
 
 using google_firestore_v1_Value;
-using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
 using model::DocumentState;
+using model::MutableDocument;
 using model::NoDocument;
 using model::OptionalMaybeDocumentMap;
 using model::SnapshotVersion;
@@ -115,7 +115,7 @@ TEST_P(RemoteDocumentCacheTest, SetAndReadADocument) {
 
 TEST_P(RemoteDocumentCacheTest, SetAndReadSeveralDocuments) {
   persistence_->Run("test_set_and_read_several_documents", [=] {
-    std::vector<Document> written = {
+    std::vector<MutableDocument> written = {
         SetTestDocument(kDocPath),
         SetTestDocument(kLongDocPath),
     };
@@ -129,7 +129,7 @@ TEST_P(RemoteDocumentCacheTest,
        SetAndReadSeveralDocumentsIncludingMissingDocument) {
   persistence_->Run(
       "test_set_and_read_several_documents_including_missing_document", [=] {
-        std::vector<Document> written = {
+        std::vector<MutableDocument> written = {
             SetTestDocument(kDocPath),
             SetTestDocument(kLongDocPath),
         };
@@ -198,7 +198,7 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingQuery) {
 
     core::Query query = Query("b");
     DocumentMap results = cache_->GetMatching(query, SnapshotVersion::None());
-    std::vector<Document> docs = {
+    std::vector<MutableDocument> docs = {
         Doc("b/1", kVersion, kDocData),
         Doc("b/2", kVersion, kDocData),
     };
@@ -214,7 +214,7 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingQuerySinceReadTime) {
 
     core::Query query = Query("b");
     DocumentMap results = cache_->GetMatching(query, Version(12));
-    std::vector<Document> docs = {
+    std::vector<MutableDocument> docs = {
         Doc("b/new", 3, kDocData),
     };
     EXPECT_THAT(results.underlying_map(), HasExactlyDocs(docs));
@@ -229,7 +229,7 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingUsesReadTimeNotUpdateTime) {
 
         core::Query query = Query("b");
         DocumentMap results = cache_->GetMatching(query, Version(1));
-        std::vector<Document> docs = {
+        std::vector<MutableDocument> docs = {
             Doc("b/old", 1, kDocData),
         };
         EXPECT_THAT(results.underlying_map(), HasExactlyDocs(docs));
@@ -238,15 +238,14 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingUsesReadTimeNotUpdateTime) {
 
 // MARK: - Helpers
 
-Document RemoteDocumentCacheTest::SetTestDocument(const absl::string_view path,
-                                                  int update_time,
-                                                  int read_time) {
-  Document doc = Doc(path, update_time, kDocData);
+MutableDocument RemoteDocumentCacheTest::SetTestDocument(
+    const absl::string_view path, int update_time, int read_time) {
+  MutableDocument doc = Doc(path, update_time, kDocData);
   cache_->Add(doc, Version(read_time));
   return doc;
 }
 
-Document RemoteDocumentCacheTest::SetTestDocument(
+MutableDocument RemoteDocumentCacheTest::SetTestDocument(
     const absl::string_view path) {
   return SetTestDocument(path, kVersion, kVersion);
 }
@@ -254,7 +253,7 @@ Document RemoteDocumentCacheTest::SetTestDocument(
 void RemoteDocumentCacheTest::SetAndReadTestDocument(
     const absl::string_view path) {
   persistence_->Run("SetAndReadTestDocument", [&] {
-    Document written = SetTestDocument(path);
+    MutableDocument written = SetTestDocument(path);
     absl::optional<MaybeDocument> read = cache_->Get(testutil::Key(path));
     ASSERT_EQ(*read, written);
   });

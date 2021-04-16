@@ -31,7 +31,7 @@
 #include "Firestore/core/src/bundle/named_query.h"
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/local/target_data.h"
-#include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation_batch.h"
 #include "Firestore/core/src/model/snapshot_version.h"
 #include "Firestore/core/src/nanopb/byte_string.h"
@@ -50,9 +50,9 @@ using bundle::BundleMetadata;
 using bundle::NamedQuery;
 using core::Target;
 using model::DeepClone;
-using model::Document;
 using model::DocumentState;
 using model::FieldTransform;
+using model::MutableDocument;
 using model::Mutation;
 using model::MutationBatch;
 using model::ObjectValue;
@@ -71,7 +71,7 @@ using util::StringFormat;
 }  // namespace
 
 Message<firestore_client_MaybeDocument> LocalSerializer::EncodeMaybeDocument(
-    const Document& document) const {
+    const MutableDocument& document) const {
   Message<firestore_client_MaybeDocument> result;
 
   if (document.is_found_document()) {
@@ -101,7 +101,7 @@ Message<firestore_client_MaybeDocument> LocalSerializer::EncodeMaybeDocument(
   UNREACHABLE();
 }
 
-Document LocalSerializer::DecodeMaybeDocument(
+MutableDocument LocalSerializer::DecodeMaybeDocument(
     Reader* reader, const firestore_client_MaybeDocument& proto) const {
   if (!reader->status().ok()) return {};
 
@@ -131,7 +131,7 @@ Document LocalSerializer::DecodeMaybeDocument(
 }
 
 google_firestore_v1_Document LocalSerializer::EncodeDocument(
-    const Document& doc) const {
+    const MutableDocument& doc) const {
   google_firestore_v1_Document result{};
 
   result.name = rpc_serializer_.EncodeKey(doc.key());
@@ -154,7 +154,7 @@ google_firestore_v1_Document LocalSerializer::EncodeDocument(
   return result;
 }
 
-Document LocalSerializer::DecodeDocument(
+MutableDocument LocalSerializer::DecodeDocument(
     Reader* reader,
     const google_firestore_v1_Document& proto,
     bool has_committed_mutations) const {
@@ -163,7 +163,7 @@ Document LocalSerializer::DecodeDocument(
   SnapshotVersion version =
       rpc_serializer_.DecodeVersion(reader->context(), proto.update_time);
 
-  Document document = Document::FoundDocument(
+  MutableDocument document = MutableDocument::FoundDocument(
       rpc_serializer_.DecodeKey(reader->context(), proto.name), version,
       std::move(fields));
 
@@ -175,7 +175,7 @@ Document LocalSerializer::DecodeDocument(
 }
 
 firestore_client_NoDocument LocalSerializer::EncodeNoDocument(
-    const Document& no_doc) const {
+    const MutableDocument& no_doc) const {
   firestore_client_NoDocument result{};
 
   result.name = rpc_serializer_.EncodeKey(no_doc.key());
@@ -184,14 +184,14 @@ firestore_client_NoDocument LocalSerializer::EncodeNoDocument(
   return result;
 }
 
-Document LocalSerializer::DecodeNoDocument(
+MutableDocument LocalSerializer::DecodeNoDocument(
     Reader* reader,
     const firestore_client_NoDocument& proto,
     bool has_committed_mutations) const {
   SnapshotVersion version =
       rpc_serializer_.DecodeVersion(reader->context(), proto.read_time);
 
-  Document document = Document::NoDocument(
+  MutableDocument document = MutableDocument::NoDocument(
       rpc_serializer_.DecodeKey(reader->context(), proto.name), version);
 
   if (has_committed_mutations) {
@@ -202,7 +202,7 @@ Document LocalSerializer::DecodeNoDocument(
 }
 
 firestore_client_UnknownDocument LocalSerializer::EncodeUnknownDocument(
-    const Document& unknown_doc) const {
+    const MutableDocument& unknown_doc) const {
   firestore_client_UnknownDocument result{};
 
   result.name = rpc_serializer_.EncodeKey(unknown_doc.key());
@@ -211,12 +211,12 @@ firestore_client_UnknownDocument LocalSerializer::EncodeUnknownDocument(
   return result;
 }
 
-Document LocalSerializer::DecodeUnknownDocument(
+MutableDocument LocalSerializer::DecodeUnknownDocument(
     Reader* reader, const firestore_client_UnknownDocument& proto) const {
   SnapshotVersion version =
       rpc_serializer_.DecodeVersion(reader->context(), proto.version);
 
-  return Document::UnknownDocument(
+  return MutableDocument::UnknownDocument(
       rpc_serializer_.DecodeKey(reader->context(), proto.name), version);
 }
 

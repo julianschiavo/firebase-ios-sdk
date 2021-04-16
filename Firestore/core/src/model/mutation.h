@@ -36,7 +36,7 @@ namespace firebase {
 namespace firestore {
 namespace model {
 
-class Document;
+class MutableDocument;
 
 /**
  * The result of applying a mutation to the server. This is a model of the
@@ -190,7 +190,7 @@ class Mutation {
    *     cache might have caused a `nullopt` result, this method will return an
    *     `UnknownDocument` instead.
    */
-  void ApplyToRemoteDocument(Document& document,
+  void ApplyToRemoteDocument(MutableDocument& document,
                              const MutationResult& mutation_result) const;
 
   /**
@@ -208,7 +208,7 @@ class Mutation {
    *     only if maybe_doc was nullopt and the mutation would not create a new
    *     document.
    */
-  void ApplyToLocalView(Document& document,
+  void ApplyToLocalView(MutableDocument& document,
                         const Timestamp& local_write_time) const;
 
   /**
@@ -228,7 +228,7 @@ class Mutation {
    *     idempotent mutations.
    */
   absl::optional<ObjectValue> ExtractTransformBaseValue(
-      const Document& document) const {
+      const MutableDocument& document) const {
     return rep_->ExtractTransformBaseValue(document);
   }
 
@@ -270,13 +270,14 @@ class Mutation {
     }
 
     virtual void ApplyToRemoteDocument(
-        Document& document, const MutationResult& mutation_result) const = 0;
+        MutableDocument& document,
+        const MutationResult& mutation_result) const = 0;
 
-    virtual void ApplyToLocalView(Document& document,
+    virtual void ApplyToLocalView(MutableDocument& document,
                                   const Timestamp& local_write_time) const = 0;
 
     virtual absl::optional<ObjectValue> ExtractTransformBaseValue(
-        const Document& document) const;
+        const MutableDocument& document) const;
 
     /**
      * Applies the result of applying a transform by the backend.
@@ -289,7 +290,7 @@ class Mutation {
      */
     void ApplyServerTransformResults(
         ObjectValue& value,
-        const Document& existing_data,
+        const MutableDocument& existing_data,
         const google_firestore_v1_ArrayValue& server_transform_results) const;
 
     /**
@@ -303,7 +304,7 @@ class Mutation {
      */
     virtual void ApplyLocalTransformResults(
         ObjectValue& value,
-        const Document& existing_data,
+        const MutableDocument& existing_data,
         const Timestamp& local_write_time) const;
 
     virtual bool Equals(const Rep& other) const;
@@ -313,9 +314,10 @@ class Mutation {
     virtual std::string ToString() const = 0;
 
    protected:
-    void VerifyKeyMatches(const Document& document) const;
+    void VerifyKeyMatches(const MutableDocument& document) const;
 
-    static SnapshotVersion GetPostMutationVersion(const Document& document);
+    static SnapshotVersion GetPostMutationVersion(
+        const MutableDocument& document);
 
    private:
     DocumentKey key_;

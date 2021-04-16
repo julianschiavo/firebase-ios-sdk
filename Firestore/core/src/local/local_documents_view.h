@@ -57,7 +57,7 @@ class LocalDocumentsView {
    * @return Local view of the document or nil if we don't have any cached state
    * for it.
    */
-  const model::Document GetDocument(const model::DocumentKey& key);
+  const model::MutableDocument GetDocument(const model::DocumentKey& key);
 
   /**
    * Gets the local view of the documents identified by `keys`.
@@ -89,8 +89,9 @@ class LocalDocumentsView {
   friend class CountingQueryEngine;  // For testing
 
   /** Internal version of GetDocument that allows re-using batches. */
-  model::Document GetDocument(const model::DocumentKey& key,
-                              const std::vector<model::MutationBatch>& batches);
+  model::MutableDocument GetDocument(
+      const model::DocumentKey& key,
+      const std::vector<model::MutationBatch>& batches);
 
   /**
    * Returns the view of the given `docs` as they would appear after applying

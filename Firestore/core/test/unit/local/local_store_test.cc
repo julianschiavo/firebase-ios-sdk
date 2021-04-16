@@ -54,12 +54,12 @@ using auth::User;
 using bundle::BundleMetadata;
 using bundle::NamedQuery;
 using local::QueryResult;
-using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
 using model::DocumentState;
 using model::ListenSequenceNumber;
+using model::MutableDocument;
 using model::Mutation;
 using model::MutationBatch;
 using model::MutationBatchResult;
@@ -95,8 +95,8 @@ std::vector<MaybeDocument> DocMapToVector(const MaybeDocumentMap& docs) {
   return result;
 }
 
-std::vector<Document> DocMapToVector(const DocumentMap& docs) {
-  std::vector<Document> result;
+std::vector<MutableDocument> DocMapToVector(const DocumentMap& docs) {
+  std::vector<MutableDocument> result;
   for (const auto& kv : docs.underlying_map()) {
     result.push_back(Document(kv.second));
   }
@@ -116,7 +116,7 @@ RemoteEvent UpdateRemoteEventWithLimboTargets(
     const std::vector<TargetId>& updated_in_targets,
     const std::vector<TargetId>& removed_from_targets,
     const std::vector<TargetId>& limbo_targets) {
-  HARD_ASSERT(!doc.is_document() || !Document(doc).has_local_mutations(),
+  HARD_ASSERT(!doc.is_document() || !MutableDocument(doc).has_local_mutations(),
               "Docs from remote updates shouldn't have local changes.");
   DocumentWatchChange change{updated_in_targets, removed_from_targets,
                              doc.key(), doc};
@@ -168,8 +168,9 @@ RemoteEvent AddedRemoteEvent(const std::vector<MaybeDocument>& docs,
 
   SnapshotVersion version;
   for (const MaybeDocument& doc : docs) {
-    HARD_ASSERT(!doc.is_document() || !Document(doc).has_local_mutations(),
-                "Docs from remote updates shouldn't have local changes.");
+    HARD_ASSERT(
+        !doc.is_document() || !MutableDocument(doc).has_local_mutations(),
+        "Docs from remote updates shouldn't have local changes.");
     DocumentWatchChange change{added_to_targets, {}, doc.key(), doc};
     aggregator.HandleDocumentChange(change);
     version = version > doc.version() ? version : doc.version();

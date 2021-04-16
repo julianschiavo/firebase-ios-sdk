@@ -19,9 +19,9 @@
 #include <utility>
 
 #include "Firestore/core/src/model/delete_mutation.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/field_value.h"
 #include "Firestore/core/src/model/maybe_document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/no_document.h"
 #include "Firestore/core/src/model/patch_mutation.h"
 #include "Firestore/core/src/model/set_mutation.h"
@@ -51,7 +51,7 @@ using testutil::WrapObject;
 const Timestamp now = Timestamp::Now();
 
 TEST(MutationTest, AppliesSetsToDocuments) {
-  Document base_doc =
+  MutableDocument base_doc =
       Doc("collection/key", 0, Map("foo", "foo-value", "baz", "baz-value"));
 
   Mutation set = SetMutation("collection/key", Map("bar", "bar-value"));
@@ -62,7 +62,7 @@ TEST(MutationTest, AppliesSetsToDocuments) {
 }
 
 TEST(MutationTest, AppliesPatchToDocuments) {
-  Document base_doc =
+  MutableDocument base_doc =
       Doc("collection/key", 0,
           Map("foo", Map("bar", "bar-value"), "baz", "baz-value"));
 
@@ -101,7 +101,7 @@ TEST(MutationTest, AppliesPatchWithMergeToNullDocuments) {
 }
 
 TEST(MutationTest, DeletesValuesFromTheFieldMask) {
-  Document base_doc =
+  MutableDocument base_doc =
       Doc("collection/key", 0,
           Map("foo", Map("bar", "bar-value", "baz", "baz-value")));
 
@@ -114,7 +114,7 @@ TEST(MutationTest, DeletesValuesFromTheFieldMask) {
 }
 
 TEST(MutationTest, PatchesPrimitiveValue) {
-  Document base_doc =
+  MutableDocument base_doc =
       Doc("collection/key", 0, Map("foo", "foo-value", "baz", "baz-value"));
 
   Mutation patch =
@@ -137,7 +137,7 @@ TEST(MutationTest, PatchingDeletedDocumentsDoesNothing) {
 }
 
 TEST(MutationTest, AppliesLocalServerTimestampTransformToDocuments) {
-  Document base_doc =
+  MutableDocument base_doc =
       Doc("collection/key", 0,
           Map("foo", Map("bar", "bar-value"), "baz", "baz-value"));
 
@@ -151,7 +151,7 @@ TEST(MutationTest, AppliesLocalServerTimestampTransformToDocuments) {
   expected_data =
       expected_data.Set(Field("foo.bar"), FieldValue::FromServerTimestamp(now));
 
-  Document expected_doc =
+  MutableDocument expected_doc =
       Doc("collection/key", 0, expected_data, DocumentState::kLocalMutations);
 
   EXPECT_EQ(result, expected_doc);
@@ -174,17 +174,17 @@ using TransformPairs = std::vector<std::pair<std::string, TransformOperation>>;
 void TransformBaseDoc(const FieldValue::Map& base_data,
                       const TransformPairs& transforms,
                       const FieldValue::Map& expected_data) {
-  Document current_doc = Doc("collection/key", 0, base_data);
+  MutableDocument current_doc = Doc("collection/key", 0, base_data);
 
   for (const auto& transform : transforms) {
     Mutation mutation = PatchMutation("collection/key", Map(), {transform});
     auto result = mutation.ApplyToLocalView(current_doc, now);
     ASSERT_NE(result, absl::nullopt);
     ASSERT_EQ(result->type(), MaybeDocument::Type::Document);
-    current_doc = Document(*result);
+    current_doc = MutableDocument(*result);
   }
 
-  Document expected_doc =
+  MutableDocument expected_doc =
       Doc("collection/key", 0, expected_data, DocumentState::kLocalMutations);
 
   EXPECT_EQ(current_doc, expected_doc);
@@ -410,7 +410,7 @@ TEST(MutationTest, AppliesLocalArrayRemoveTransformWithNonPrimitiveElements) {
 }
 
 TEST(MutationTest, AppliesServerAckedIncrementTransformToDocuments) {
-  Document base_doc = Doc("collection/key", 0, Map("sum", 1));
+  MutableDocument base_doc = Doc("collection/key", 0, Map("sum", 1));
 
   Mutation transform =
       SetMutation("collection/key", Map(), {{"sum", Increment(2)}});
@@ -425,7 +425,7 @@ TEST(MutationTest, AppliesServerAckedIncrementTransformToDocuments) {
 }
 
 TEST(MutationTest, AppliesServerAckedServerTimestampTransformToDocuments) {
-  Document base_doc =
+  MutableDocument base_doc =
       Doc("collection/key", 0,
           Map("foo", Map("bar", "bar-value"), "baz", "baz-value"));
 
@@ -437,7 +437,7 @@ TEST(MutationTest, AppliesServerAckedServerTimestampTransformToDocuments) {
   MaybeDocument result =
       transform.ApplyToRemoteDocument(base_doc, mutation_result);
 
-  Document expected_doc =
+  MutableDocument expected_doc =
       Doc("collection/key", 1, Map("foo", Map("bar", now), "baz", "baz-value"),
           DocumentState::kCommittedMutations);
 
@@ -445,7 +445,7 @@ TEST(MutationTest, AppliesServerAckedServerTimestampTransformToDocuments) {
 }
 
 TEST(MutationTest, AppliesServerAckedArrayTransformsToDocuments) {
-  Document base_doc =
+  MutableDocument base_doc =
       Doc("collection/key", 0,
           Map("array_1", Array(1, 2), "array_2", Array("a", "b")));
 
@@ -468,7 +468,7 @@ TEST(MutationTest, AppliesServerAckedArrayTransformsToDocuments) {
 }
 
 TEST(MutationTest, DeleteDeletes) {
-  Document base_doc = Doc("collection/key", 0, Map("foo", "bar"));
+  MutableDocument base_doc = Doc("collection/key", 0, Map("foo", "bar"));
 
   Mutation del = DeleteMutation("collection/key");
   auto result = del.ApplyToLocalView(base_doc, now);
@@ -477,7 +477,7 @@ TEST(MutationTest, DeleteDeletes) {
 }
 
 TEST(MutationTest, SetWithMutationResult) {
-  Document base_doc = Doc("collection/key", 0, Map("foo", "bar"));
+  MutableDocument base_doc = Doc("collection/key", 0, Map("foo", "bar"));
 
   Mutation set = SetMutation("collection/key", Map("foo", "new-bar"));
   MaybeDocument result = set.ApplyToRemoteDocument(base_doc, MutationResult(4));
@@ -487,7 +487,7 @@ TEST(MutationTest, SetWithMutationResult) {
 }
 
 TEST(MutationTest, PatchWithMutationResult) {
-  Document base_doc = Doc("collection/key", 0, Map("foo", "bar"));
+  MutableDocument base_doc = Doc("collection/key", 0, Map("foo", "bar"));
 
   Mutation patch = PatchMutation("collection/key", Map("foo", "new-bar"));
   MaybeDocument result =

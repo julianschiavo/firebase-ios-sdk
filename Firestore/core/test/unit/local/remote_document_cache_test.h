@@ -26,7 +26,7 @@ namespace firebase {
 namespace firestore {
 namespace model {
 
-class Document;
+class MutableDocument;
 
 }  // namespace model
 
@@ -53,10 +53,10 @@ class RemoteDocumentCacheTest : public ::testing::TestWithParam<FactoryFunc> {
   RemoteDocumentCacheTest();
 
  protected:
-  model::Document SetTestDocument(absl::string_view path);
-  model::Document SetTestDocument(absl::string_view path,
-                                  int update_time,
-                                  int read_time);
+  model::MutableDocument SetTestDocument(absl::string_view path);
+  model::MutableDocument SetTestDocument(absl::string_view path,
+                                         int update_time,
+                                         int read_time);
   void SetAndReadTestDocument(absl::string_view path);
 
   std::unique_ptr<Persistence> persistence_;

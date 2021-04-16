@@ -21,9 +21,9 @@
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/core/target.h"
 #include "Firestore/core/src/local/local_documents_view.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/document_set.h"
 #include "Firestore/core/src/model/maybe_document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/snapshot_version.h"
 #include "Firestore/core/src/util/log.h"
 
@@ -34,10 +34,10 @@ namespace local {
 using core::LimitType;
 using core::Query;
 using core::Target;
-using model::Document;
 using model::DocumentKeySet;
 using model::DocumentMap;
 using model::DocumentSet;
+using model::MutableDocument;
 using model::SnapshotVersion;
 
 DocumentMap QueryEngine::GetDocumentsMatchingQuery(
@@ -80,7 +80,7 @@ DocumentMap QueryEngine::GetDocumentsMatchingQuery(
   // We merge `previous_results` into `update_results`, since `update_results`
   // is already a DocumentMap. If a document is contained in both lists, then
   // its contents are the same.
-  for (const Document& result : previous_results) {
+  for (const MutableDocument& result : previous_results) {
     updated_results = updated_results.insert(result.key(), result);
   }
 
@@ -96,7 +96,7 @@ DocumentSet QueryEngine::ApplyQuery(const Query& query,
   for (const auto& document_entry : documents) {
     const MaybeDocument& maybe_doc = document_entry.second;
     if (maybe_doc.is_document()) {
-      Document doc(maybe_doc);
+      MutableDocument doc(maybe_doc);
       if (query.Matches(doc)) {
         query_results = query_results.insert(std::move(doc));
       }
@@ -124,7 +124,7 @@ bool QueryEngine::NeedsRefill(
   // differently, the boundary of the limit itself did not change and documents
   // from cache will continue to be "rejected" by this boundary. Therefore, we
   // can ignore any modifications that don't affect the last document.
-  absl::optional<Document> document_at_limit_edge =
+  absl::optional<MutableDocument> document_at_limit_edge =
       (limit_type == LimitType::First)
           ? sorted_previous_results.GetLastDocument()
           : sorted_previous_results.GetFirstDocument();

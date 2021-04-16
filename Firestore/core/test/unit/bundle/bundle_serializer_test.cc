@@ -113,8 +113,8 @@ class BundleSerializerTest : public ::testing::Test {
     VerifyDecodedDocumentEncodesToOriginal(actual.document(), document);
   }
 
-  void VerifyDecodedDocumentEncodesToOriginal(const model::Document& decoded,
-                                              const ProtoDocument& original) {
+  void VerifyDecodedDocumentEncodesToOriginal(
+      const model::MutableDocument& decoded, const ProtoDocument& original) {
     ByteString bytes =
         nanopb::MakeByteString(local_serializer.EncodeMaybeDocument(decoded));
     ProtoMaybeDocument maybe_document;
