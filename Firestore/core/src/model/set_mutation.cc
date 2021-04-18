@@ -74,7 +74,7 @@ void SetMutation::Rep::ApplyToRemoteDocument(
   // the server has accepted the mutation so the precondition must have held.
 
   ObjectValue new_data{DeepClone(value_.Get())};
-  ApplyServerTransformResults(&new_data, *document,
+  ApplyServerTransformResults(new_data, document,
                               mutation_result.transform_results());
   document
       .ConvertToFoundDocument(mutation_result.version(), std::move(new_data))
@@ -85,14 +85,14 @@ void SetMutation::Rep::ApplyToLocalView(
     MutableDocument& document, const Timestamp& local_write_time) const {
   VerifyKeyMatches(document);
 
-  if (!precondition().IsValidFor(*document)) {
+  if (!precondition().IsValidFor(document)) {
     return;
   }
 
   ObjectValue new_data{DeepClone(value_.Get())};
-  ApplyLocalTransformResults(&new_data, *document, local_write_time);
+  ApplyLocalTransformResults(new_data, document, local_write_time);
   document
-      .ConvertToFoundDocument(GetPostMutationVersion(*document),
+      .ConvertToFoundDocument(GetPostMutationVersion(document),
                               std::move(new_data))
       .SetHasLocalMutations();
 }

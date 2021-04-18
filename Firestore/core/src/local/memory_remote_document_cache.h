@@ -24,6 +24,7 @@
 #include "Firestore/core/src/local/remote_document_cache.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/model_fwd.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/types.h"
 
 namespace firebase {

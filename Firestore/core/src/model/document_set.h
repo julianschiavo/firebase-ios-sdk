@@ -26,6 +26,7 @@
 #include "Firestore/core/src/immutable/sorted_container.h"
 #include "Firestore/core/src/immutable/sorted_set.h"
 #include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/model_fwd.h"
 #include "Firestore/core/src/util/comparison.h"
 
 namespace firebase {

@@ -20,7 +20,7 @@
 
 #include "Firestore/core/src/core/database_info.h"
 #include "Firestore/core/src/model/document_key.h"
-#include "Firestore/core/src/model/maybe_document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation.h"
 #include "Firestore/core/src/model/snapshot_version.h"
 #include "Firestore/core/src/nanopb/byte_string.h"
@@ -243,7 +243,7 @@ StatusOr<std::vector<model::MutableDocument>>
 DatastoreSerializer::MergeLookupResponses(
     const std::vector<grpc::ByteBuffer>& responses) const {
   // Sort by key.
-  std::map<DocumentKey, MaybeDocument> results;
+  std::map<DocumentKey, MutableDocument> results;
 
   for (const auto& response : responses) {
     ByteBufferReader reader{response};
@@ -251,7 +251,7 @@ DatastoreSerializer::MergeLookupResponses(
         Message<google_firestore_v1_BatchGetDocumentsResponse>::TryParse(
             &reader);
 
-    MaybeDocument doc =
+    MutableDocument doc =
         serializer_.DecodeMaybeDocument(reader.context(), *message);
     if (!reader.ok()) {
       return reader.status();
@@ -260,13 +260,13 @@ DatastoreSerializer::MergeLookupResponses(
     results[doc.key()] = std::move(doc);
   }
 
-  std::vector<MaybeDocument> docs;
+  std::vector<MutableDocument> docs;
   docs.reserve(results.size());
   for (const auto& kv : results) {
     docs.push_back(kv.second);
   }
 
-  StatusOr<std::vector<model::MutableDocument>> result{std::move(docs)};
+  StatusOr<std::vector<MutableDocument>> result{std::move(docs)};
   return result;
 }
 

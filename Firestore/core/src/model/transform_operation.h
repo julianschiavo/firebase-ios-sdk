@@ -25,6 +25,7 @@
 
 #include "Firestore/Protos/nanopb/google/firestore/v1/document.nanopb.h"
 #include "Firestore/core/src/nanopb/message.h"
+#include "Firestore/core/src/util/hard_assert.h"
 #include "absl/types/optional.h"
 
 namespace firebase {

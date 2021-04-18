@@ -98,7 +98,7 @@ using DocumentVersionMap =
     std::unordered_map<DocumentKey, SnapshotVersion, DocumentKeyHash>;
 
 using DocumentUpdateMap =
-    std::unordered_map<DocumentKey, const MutableDocument, DocumentKeyHash>;
+    std::unordered_map<DocumentKey, MutableDocument, DocumentKeyHash>;
 
 }  // namespace model
 }  // namespace firestore

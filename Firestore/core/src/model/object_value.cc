@@ -303,6 +303,11 @@ void ObjectValue::Delete(const FieldPath& path) {
 std::string ObjectValue::ToString() const {
   return CanonicalId(*value_);
 }
+
+size_t ObjectValue::Hash() const {
+  return std::hash<std::string>()(CanonicalId(*value_));
+}
+
 /**
  * Returns the map that contains the leaf element of `path`. If the parent
  * entry does not yet exist, or if it is not a map, a new map will be created.

@@ -100,6 +100,8 @@ class ObjectValue {
 
   std::string ToString() const;
 
+  size_t Hash() const;
+
   friend bool operator==(const ObjectValue& lhs, const ObjectValue& rhs);
   friend std::ostream& operator<<(std::ostream& out,
                                   const ObjectValue& object_value);

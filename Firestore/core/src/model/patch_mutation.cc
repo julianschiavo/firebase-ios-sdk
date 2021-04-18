@@ -102,7 +102,7 @@ void PatchMutation::Rep::ApplyToLocalView(
   ObjectValue new_data{document.data()};
   ApplyLocalTransformResults(new_data, document, local_write_time);
   new_data.SetAll(mask_, value_);
-  document.ConvertToFoundDocument(GetPostMutationVersion(*document), new_data)
+  document.ConvertToFoundDocument(GetPostMutationVersion(document), new_data)
       .SetHasLocalMutations();
 }
 

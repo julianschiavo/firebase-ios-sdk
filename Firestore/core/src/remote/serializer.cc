@@ -574,7 +574,7 @@ Serializer::EncodeFieldTransform(const FieldTransform& field_transform) const {
           google_firestore_v1_DocumentTransform_FieldTransform_increment_tag;
       const auto& increment = static_cast<const NumericIncrementTransform&>(
           field_transform.transformation());
-      proto.increment = EncodeFieldValue(increment.operand());
+      proto.increment = increment.operand();
       return proto;
     }
   }
@@ -896,7 +896,7 @@ google_firestore_v1_StructuredQuery_Filter Serializer::EncodeSingularFilter(
 
   result.field_filter.field.field_path = EncodeFieldPath(filter.field());
   result.field_filter.op = EncodeFieldFilterOperator(filter.op());
-  result.field_filter.value = EncodeFieldValue(filter.value());
+  result.field_filter.value = DeepClone(filter.value());
 
   return result;
 }
@@ -1210,13 +1210,13 @@ MutationResult Serializer::DecodeMutationResult(
           ? DecodeVersion(context, write_result.update_time)
           : commit_version;
 
-  absl::optional<std::vector<FieldValue>> transform_results;
-  if (write_result.transform_results_count > 0) {
-    transform_results = std::vector<FieldValue>{};
-    for (pb_size_t i = 0; i < write_result.transform_results_count; i++) {
-      transform_results->push_back(
-          DecodeFieldValue(context, write_result.transform_results[i]));
-    }
+  google_firestore_v1_ArrayValue transform_results;
+  transform_results.values_count = write_result.transform_results_count;
+  transform_results.values = MakeArray<google_firestore_v1_Value>(
+      write_result.transform_results_count);
+
+  for (pb_size_t i = 0; i < write_result.transform_results_count; i++) {
+    transform_results.values[i] = DeepClone(write_result.transform_results[i]);
   }
 
   return MutationResult(version, std::move(transform_results));
@@ -1348,8 +1348,8 @@ std::unique_ptr<WatchChange> Serializer::DecodeDocumentChange(
   // would defeat the purpose). Note, however, that even without this
   // optimization C++ implementation is on par with the preceding Objective-C
   // implementation.
-  MutableDocument document(std::move(value), key, version,
-                           DocumentState::kSynced);
+  MutableDocument document =
+      MutableDocument::FoundDocument(key, version, std::move(value));
 
   std::vector<TargetId> updated_target_ids(
       change.target_ids, change.target_ids + change.target_ids_count);
@@ -1371,7 +1371,7 @@ std::unique_ptr<WatchChange> Serializer::DecodeDocumentDelete(
   SnapshotVersion version = change.has_read_time
                                 ? DecodeVersion(context, change.read_time)
                                 : SnapshotVersion::None();
-  NoDocument document(key, version, /* has_committed_mutations= */ false);
+  MutableDocument document = MutableDocument::NoDocument(key, version);
 
   std::vector<TargetId> removed_target_ids(
       change.removed_target_ids,

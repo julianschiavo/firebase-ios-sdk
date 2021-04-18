@@ -28,6 +28,7 @@
 #include "Firestore/core/src/core/target_id_generator.h"
 #include "Firestore/core/src/local/reference_set.h"
 #include "Firestore/core/src/local/target_data.h"
+#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/model_fwd.h"
 #include "absl/types/optional.h"
 

@@ -29,6 +29,7 @@
 #include "Firestore/core/src/local/query_result.h"
 #include "Firestore/core/src/local/reference_delegate.h"
 #include "Firestore/core/src/local/target_cache.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation_batch.h"
 #include "Firestore/core/src/model/mutation_batch_result.h"
 #include "Firestore/core/src/model/patch_mutation.h"
@@ -515,7 +516,7 @@ void LocalStore::SaveBundle(const bundle::BundleMetadata& metadata) {
 }
 
 DocumentMap LocalStore::ApplyBundledDocuments(
-    const DocumentMap& bundled_documents, const std::string& bundle_id) {
+    const MutableDocumentMap& bundled_documents, const std::string& bundle_id) {
   // Allocates a target to hold all document keys from the bundle, such that
   // they will not get garbage collected right away.
   TargetData umbrella_target = AllocateTarget(NewUmbrellaTarget(bundle_id));

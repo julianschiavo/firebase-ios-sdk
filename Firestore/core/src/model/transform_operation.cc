@@ -181,10 +181,9 @@ constexpr bool IsArrayTransform(Type type) {
 
 }  // namespace
 
-ArrayTransform::ArrayTransform(
-    Type type, nanopb::Message<google_firestore_v1_ArrayValue> elements)
-    : TransformOperation(
-          std::make_shared<const Rep>(type, std::move(elements))) {
+ArrayTransform::ArrayTransform(Type type,
+                               google_firestore_v1_ArrayValue elements)
+    : TransformOperation(std::make_shared<const Rep>(type, elements)) {
   HARD_ASSERT(IsArrayTransform(type), "Expected array transform type; got %s",
               type);
 }
@@ -207,7 +206,7 @@ bool ArrayTransform::Rep::Equals(const TransformOperation::Rep& other) const {
   if (other.type() != type()) {
     return false;
   }
-  auto other_rep = static_cast<const ArrayTransform::Rep&>(other);
+  auto& other_rep = static_cast<const ArrayTransform::Rep&>(other);
   if (other_rep.elements_->values_count != elements_->values_count) {
     return false;
   }
@@ -222,8 +221,9 @@ bool ArrayTransform::Rep::Equals(const TransformOperation::Rep& other) const {
 size_t ArrayTransform::Rep::Hash() const {
   size_t result = 37;
   result = 31 * result + (type() == Type::ArrayUnion ? 1231 : 1237);
-  for (const auto& element : elements_) {
-    result = 31 * result + std::hash(CanonicalId(element));
+  for (size_t i = 0; i < elements_->values_count; i++) {
+    result = 31 * result +
+             std::hash<std::string>()(CanonicalId(elements_->values[i]));
   }
   return result;
 }
@@ -267,9 +267,9 @@ google_firestore_v1_Value ArrayTransform::Rep::Apply(
     for (pb_size_t old_index = 0; old_index < array_value.values_count;
          ++old_index) {
       if (Contains(*elements_, array_value.values[old_index])) {
-        nanopb::FreeNanopbMessage(array_value.values[old_index]);
+        nanopb::FreeFieldsArray(&array_value.values[old_index]);
       } else {
-        array_value.values[new_index] = array_value.values_count[old_index];
+        array_value.values[new_index] = array_value.values[old_index];
         ++new_index;
       }
     }
@@ -310,12 +310,12 @@ class NumericIncrementTransform::Rep : public TransformOperation::Rep {
       const absl::optional<google_firestore_v1_Value>& previous_value)
       const override;
 
-  double OperandAsDouble();
+  double OperandAsDouble() const;
 
   bool Equals(const TransformOperation::Rep& other) const override;
 
   size_t Hash() const override {
-    return std::hash(CanonicalId(operand_);
+    return std::hash<std::string>()(CanonicalId(operand_));
   }
 
   std::string ToString() const override {
@@ -365,7 +365,7 @@ int64_t SafeIncrement(int64_t x, int64_t y) {
 
 }  // namespace
 
-double NumericIncrementTransform::Rep::OperandAsDouble() {
+double NumericIncrementTransform::Rep::OperandAsDouble() const {
   if (IsDouble(operand_)) {
     return operand_.double_value;
   } else if (IsInteger(operand_)) {
