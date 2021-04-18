@@ -54,14 +54,14 @@ Transaction::Transaction(Datastore* datastore)
 Status Transaction::RecordVersion(const Document& doc) {
   SnapshotVersion doc_version;
 
-  if (doc.is_document()) {
-    doc_version = doc.version();
-  } else if (doc.is_no_document()) {
+  if (doc->is_found_document()) {
+    doc_version = doc->version();
+  } else if (doc->is_no_document()) {
     // For deleted docs, we must record an explicit no version to build the
     // right precondition when writing.
     doc_version = SnapshotVersion::None();
   } else {
-    HARD_FAIL("Unexpected document type in transaction: %s", doc.ToString * ());
+    HARD_FAIL("Unexpected document type in transaction: %s", doc.ToString());
   }
 
   absl::optional<SnapshotVersion> existing_version = GetVersion(doc->key());
@@ -73,7 +73,7 @@ Status Transaction::RecordVersion(const Document& doc) {
     }
     return Status::OK();
   } else {
-    read_versions_[doc.key()] = doc_version;
+    read_versions_[doc->key()] = doc_version;
     return Status::OK();
   }
 }
@@ -91,15 +91,15 @@ void Transaction::Lookup(const std::vector<DocumentKey>& keys,
   }
 
   datastore_->LookupDocuments(
-      keys, [this, callback](
-                const StatusOr<std::vector<MaybeDocument>>& maybe_documents) {
+      keys,
+      [this, callback](const StatusOr<std::vector<Document>>& maybe_documents) {
         if (!maybe_documents.ok()) {
           callback(maybe_documents.status());
           return;
         }
 
         const auto& documents = maybe_documents.ValueOrDie();
-        for (const MaybeDocument& doc : documents) {
+        for (const Document& doc : documents) {
           Status record_error = RecordVersion(doc);
           if (!record_error.ok()) {
             callback(record_error);

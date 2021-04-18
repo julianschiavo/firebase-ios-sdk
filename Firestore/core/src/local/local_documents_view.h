@@ -31,6 +31,10 @@ namespace core {
 class Query;
 }  // namespace core
 
+namespace model {
+class Document;
+}  // namespace model
+
 namespace local {
 
 /**
@@ -57,7 +61,7 @@ class LocalDocumentsView {
    * @return Local view of the document or nil if we don't have any cached state
    * for it.
    */
-  const model::MutableDocument GetDocument(const model::DocumentKey& key);
+  const model::Document GetDocument(const model::DocumentKey& key);
 
   /**
    * Gets the local view of the documents identified by `keys`.
@@ -72,7 +76,7 @@ class LocalDocumentsView {
    * `base_docs` without retrieving documents from the local store.
    */
   model::DocumentMap GetLocalViewOfDocuments(
-      const model::DocumentMap& base_docs);
+      model::MutableDocumentMap base_docs);
 
   /**
    * Performs a query against the local view of all documents.
@@ -89,15 +93,14 @@ class LocalDocumentsView {
   friend class CountingQueryEngine;  // For testing
 
   /** Internal version of GetDocument that allows re-using batches. */
-  model::MutableDocument GetDocument(
-      const model::DocumentKey& key,
-      const std::vector<model::MutationBatch>& batches);
+  model::Document GetDocument(const model::DocumentKey& key,
+                              const std::vector<model::MutationBatch>& batches);
 
   /**
    * Returns the view of the given `docs` as they would appear after applying
    * all mutations in the given `batches`.
    */
-  void ApplyLocalMutationsToDocuments(
+  static void ApplyLocalMutationsToDocuments(
       model::MutableDocumentMap& docs,
       const std::vector<model::MutationBatch>& batches);
 
@@ -121,9 +124,9 @@ class LocalDocumentsView {
    * `PatchMutation`s will be ignored because no base document can be found, and
    * lead to missing results for the query.
    */
-  model::DocumentMap AddMissingBaseDocuments(
+  model::MutableDocumentMap AddMissingBaseDocuments(
       const std::vector<model::MutationBatch>& matching_batches,
-      model::DocumentMap existing_docs);
+      model::MutableDocumentMap existing_docs);
 
   RemoteDocumentCache* remote_document_cache() {
     return remote_document_cache_;

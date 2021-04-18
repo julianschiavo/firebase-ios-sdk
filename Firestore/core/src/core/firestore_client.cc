@@ -395,7 +395,7 @@ void FirestoreClient::GetDocumentFromLocalCache(
   // TODO(c++14): move `callback` into lambda.
   auto shared_callback = absl::ShareUniquePtr(std::move(callback));
   worker_queue_->Enqueue([this, doc, shared_callback] {
-    Document document = local_store_->ReadDocument(doc->key());
+    Document document = local_store_->ReadDocument(doc.key());
     StatusOr<DocumentSnapshot> maybe_snapshot;
 
     if (document->is_found_document()) {
@@ -406,7 +406,7 @@ void FirestoreClient::GetDocumentFromLocalCache(
     } else if (document->is_no_document()) {
       maybe_snapshot = DocumentSnapshot::FromNoDocument(
           doc.firestore(), doc.key(),
-          SnapshotMetadata{/*has_pending_writes=*/false,
+          SnapshotMetadata{/*pending_writes=*/false,
                            /*from_cache=*/true});
     } else {
       maybe_snapshot =

@@ -16,15 +16,16 @@
 
 #include "Firestore/core/src/local/local_documents_view.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/local/mutation_queue.h"
 #include "Firestore/core/src/local/remote_document_cache.h"
+#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/document_key_set.h"
-#include "Firestore/core/src/model/document_map.h"
 #include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation_batch.h"
 #include "Firestore/core/src/model/resource_path.h"
@@ -36,6 +37,7 @@ namespace firestore {
 namespace local {
 
 using core::Query;
+using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
@@ -47,19 +49,19 @@ using model::NoDocument;
 using model::ResourcePath;
 using model::SnapshotVersion;
 
-const MutableDocument LocalDocumentsView::GetDocument(const DocumentKey& key) {
+const Document LocalDocumentsView::GetDocument(const DocumentKey& key) {
   std::vector<MutationBatch> batches =
       mutation_queue_->AllMutationBatchesAffectingDocumentKey(key);
   return GetDocument(key, batches);
 }
 
-MutableDocument LocalDocumentsView::GetDocument(
+Document LocalDocumentsView::GetDocument(
     const DocumentKey& key, const std::vector<MutationBatch>& batches) {
   MutableDocument document = remote_document_cache_->Get(key);
   for (const MutationBatch& batch : batches) {
     batch.ApplyToLocalDocument(document, key);
   }
-  return document;
+  return Document{std::move(document)};
 }
 
 void LocalDocumentsView::ApplyLocalMutationsToDocuments(
@@ -75,11 +77,11 @@ void LocalDocumentsView::ApplyLocalMutationsToDocuments(
 
 DocumentMap LocalDocumentsView::GetDocuments(const DocumentKeySet& keys) {
   MutableDocumentMap docs = remote_document_cache_->GetAll(keys);
-  return GetLocalViewOfDocuments(docs);
+  return GetLocalViewOfDocuments(std::move(docs));
 }
 
 DocumentMap LocalDocumentsView::GetLocalViewOfDocuments(
-    MutableDocumentMap& docs) {
+    MutableDocumentMap docs) {
   DocumentKeySet all_keys;
   for (const auto& kv : docs) {
     all_keys = all_keys.insert(kv.first);
@@ -90,7 +92,7 @@ DocumentMap LocalDocumentsView::GetLocalViewOfDocuments(
 
   DocumentMap results;
   for (const auto& kv : docs) {
-    results = results.insert(kv.first, kv.second);
+    results = results.insert(kv.first, Document{kv.second});
   }
   return results;
 }
@@ -110,9 +112,9 @@ DocumentMap LocalDocumentsView::GetDocumentsMatchingDocumentQuery(
     const ResourcePath& doc_path) {
   DocumentMap result;
   // Just do a simple document lookup.
-  absl::optional<MaybeDocument> doc = GetDocument(DocumentKey{doc_path});
-  if (doc && doc->is_document()) {
-    result = result.insert(doc->key(), MutableDocument(*doc));
+  Document doc = GetDocument(DocumentKey{doc_path});
+  if (doc->is_found_document()) {
+    result = result.insert(doc->key(), doc);
   }
   return result;
 }
@@ -135,7 +137,7 @@ model::DocumentMap LocalDocumentsView::GetDocumentsMatchingCollectionGroupQuery(
         query.AsCollectionQueryAtPath(parent.Append(collection_id));
     DocumentMap collection_results =
         GetDocumentsMatchingCollectionQuery(collection_query, since_read_time);
-    for (const auto& kv : collection_results.underlying_map()) {
+    for (const auto& kv : collection_results) {
       const DocumentKey& key = kv.first;
       results = results.insert(key, Document(kv.second));
     }
@@ -145,13 +147,14 @@ model::DocumentMap LocalDocumentsView::GetDocumentsMatchingCollectionGroupQuery(
 
 DocumentMap LocalDocumentsView::GetDocumentsMatchingCollectionQuery(
     const Query& query, const SnapshotVersion& since_read_time) {
-  DocumentMap results =
+  MutableDocumentMap remote_documents =
       remote_document_cache_->GetMatching(query, since_read_time);
   // Get locally persisted mutation batches.
   std::vector<MutationBatch> matching_batches =
       mutation_queue_->AllMutationBatchesAffectingQuery(query);
 
-  results = AddMissingBaseDocuments(matching_batches, std::move(results));
+  remote_documents =
+      AddMissingBaseDocuments(matching_batches, std::move(remote_documents));
 
   for (const MutationBatch& batch : matching_batches) {
     for (const Mutation& mutation : batch.mutations()) {
@@ -163,16 +166,19 @@ DocumentMap LocalDocumentsView::GetDocumentsMatchingCollectionQuery(
       const DocumentKey& key = mutation.key();
       // base_doc may be unset for the documents that weren't yet written to
       // the backend.
-      absl::optional<MaybeDocument> base_doc =
-          results.underlying_map().get(key);
+      absl::optional<MutableDocument> document = remote_documents.get(key);
+      if (!document) {
+        // Create invalid document to apply mutations on top of
+        document = MutableDocument::InvalidDocument(key);
+        remote_documents = remote_documents.insert(key, *document);
+      }
 
-      absl::optional<MaybeDocument> mutated_doc =
-          mutation.ApplyToLocalView(base_doc, batch.local_write_time());
+      mutation.ApplyToLocalView(*document, batch.local_write_time());
 
-      if (mutated_doc && mutated_doc->is_document()) {
-        results = results.insert(key, MutableDocument(*mutated_doc));
+      if (document->is_found_document()) {
+        remote_documents = remote_documents.insert(key, *document);
       } else {
-        results = results.erase(key);
+        remote_documents = remote_documents.erase(key);
       }
     }
   }
@@ -181,39 +187,39 @@ DocumentMap LocalDocumentsView::GetDocumentsMatchingCollectionQuery(
   // that the extra reference here prevents DocumentMap's destructor from
   // deallocating the initial unfiltered results while we're iterating over
   // them.
-  DocumentMap unfiltered = results;
-  for (const auto& kv : unfiltered.underlying_map()) {
+  DocumentMap results;
+  for (const auto& kv : remote_documents) {
     const DocumentKey& key = kv.first;
-    MutableDocument doc(kv.second);
-    if (!query.Matches(doc)) {
-      results = results.erase(key);
+    Document doc{std::move(kv.second)};
+    if (query.Matches(doc)) {
+      results = results.insert(key, doc);
     }
   }
 
   return results;
 }
 
-DocumentMap LocalDocumentsView::AddMissingBaseDocuments(
+MutableDocumentMap LocalDocumentsView::AddMissingBaseDocuments(
     const std::vector<MutationBatch>& matching_batches,
-    DocumentMap existing_docs) {
+    MutableDocumentMap existing_docs) {
   DocumentKeySet missing_doc_keys;
   for (const MutationBatch& batch : matching_batches) {
     for (const Mutation& mutation : batch.mutations()) {
       const DocumentKey& key = mutation.key();
       if (mutation.type() == Mutation::Type::Patch &&
-          !existing_docs.underlying_map().contains(key)) {
+          !existing_docs.contains(key)) {
         missing_doc_keys = missing_doc_keys.insert(key);
       }
     }
   }
 
-  OptionalMaybeDocumentMap missing_docs =
+  MutableDocumentMap merged_docs = existing_docs;
+  MutableDocumentMap missing_docs =
       remote_document_cache_->GetAll(missing_doc_keys);
   for (const auto& kv : missing_docs) {
-    const absl::optional<MaybeDocument>& maybe_doc = kv.second;
-    if (maybe_doc && maybe_doc->is_document()) {
-      existing_docs =
-          existing_docs.insert(kv.first, MutableDocument(*maybe_doc));
+    const MutableDocument document = kv.second;
+    if (document.is_found_document()) {
+      existing_docs = existing_docs.insert(kv.first, document);
     }
   }
 

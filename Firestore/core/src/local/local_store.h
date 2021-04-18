@@ -320,7 +320,7 @@ class LocalStore : public bundle::BundleCallback {
    * @param global_version A SnapshotVersion representing the read time if all
    * documents have the same read time.
    */
-  model::DocumentMap PopulateDocumentChanges(
+  model::MutableDocumentMap PopulateDocumentChanges(
       const model::DocumentUpdateMap& documents,
       const model::DocumentVersionMap& document_versions,
       const model::SnapshotVersion& global_version);

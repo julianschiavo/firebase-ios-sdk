@@ -31,9 +31,9 @@ namespace model {
  */
 class Document {
  public:
-  explicit Document(MutableDocument&& document)
-      : document_(std::move(document)) {
+  explicit Document(MutableDocument document) : document_{std::move(document)} {
   }
+
   Document() = default;
   const MutableDocument& get() const {
     return document_;

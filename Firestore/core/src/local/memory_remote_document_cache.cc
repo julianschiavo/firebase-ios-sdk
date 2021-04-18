@@ -20,6 +20,8 @@
 #include "Firestore/core/src/local/memory_lru_reference_delegate.h"
 #include "Firestore/core/src/local/memory_persistence.h"
 #include "Firestore/core/src/local/sizer.h"
+#include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/util/hard_assert.h"
 
 namespace firebase {
@@ -27,6 +29,7 @@ namespace firestore {
 namespace local {
 
 using core::Query;
+using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::ListenSequenceNumber;
@@ -94,7 +97,7 @@ MutableDocumentMap MemoryRemoteDocumentCache::GetMatching(
       continue;
     }
 
-    if (query.Matches(document)) {
+    if (query.Matches(Document{document}) {
       results = results.insert(key, document);
     }
   }
