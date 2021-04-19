@@ -17,7 +17,8 @@
 #include "Firestore/core/test/unit/local/counting_query_engine.h"
 
 #include "Firestore/core/src/local/local_documents_view.h"
-#include "Firestore/core/src/model/document_map.h"
+#include "Firestore/core/src/model/model_fwd.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation_batch.h"
 #include "Firestore/core/src/nanopb/byte_string.h"
 
@@ -157,14 +158,14 @@ absl::optional<model::MutableDocument> WrappedRemoteDocumentCache::Get(
   return result;
 }
 
-model::OptionalMaybeDocumentMap WrappedRemoteDocumentCache::GetAll(
+model::MutableDocumentMap WrappedRemoteDocumentCache::GetAll(
     const model::DocumentKeySet& keys) {
   auto result = subject_->GetAll(keys);
   query_engine_->documents_read_by_key_ += result.size();
   return result;
 }
 
-DocumentMap WrappedRemoteDocumentCache::GetMatching(
+model::MutableDocumentMap WrappedRemoteDocumentCache::GetMatching(
     const core::Query& query, const model::SnapshotVersion& since_read_time) {
   auto result = subject_->GetMatching(query, since_read_time);
   query_engine_->documents_read_by_query_ += result.size();

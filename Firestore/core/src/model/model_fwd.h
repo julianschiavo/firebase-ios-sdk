@@ -66,14 +66,12 @@ class Mutation;
 class MutationBatch;
 class MutationBatchResult;
 class MutationResult;
-class NoDocument;
 class ObjectValue;
 class PatchMutation;
 class Precondition;
 class SetMutation;
 class SnapshotVersion;
 class TransformOperation;
-class UnknownDocument;
 class VerifyMutation;
 
 enum class DocumentState;

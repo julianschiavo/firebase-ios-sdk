@@ -23,9 +23,10 @@
 #include <utility>
 #include <vector>
 
+#include "Firestore/Protos/nanopb/google/firestore/v1/document.nanopb.h"
 #include "Firestore/core/src/core/core_fwd.h"
-#include "Firestore/core/src/model/field_value.h"
 #include "Firestore/core/src/model/model_fwd.h"
+#include "Firestore/core/src/nanopb/nanopb_util.h"
 #include "absl/strings/string_view.h"
 
 namespace firebase {
@@ -76,7 +77,10 @@ using EnableForInts = typename std::enable_if<std::is_integral<T>::value &&
  */
 template <typename T>
 EnableForExactlyBool<T, google_firestore_v1_Value> Value(T bool_value) {
-  return google_firestore_v1_Value::FromBoolean(bool_value);
+  google_firestore_v1_Value result{};
+  result.which_value_type = google_firestore_v1_Value_boolean_value_tag;
+  result.boolean_value = bool_value;
+  return result;
 }
 
 /**
@@ -92,7 +96,10 @@ EnableForExactlyBool<T, google_firestore_v1_Value> Value(T bool_value) {
  */
 template <typename T>
 EnableForInts<T, google_firestore_v1_Value> Value(T value) {
-  return google_firestore_v1_Value::FromInteger(value);
+  google_firestore_v1_Value result{};
+  result.which_value_type = google_firestore_v1_Value_integer_value_tag;
+  result.boolean_value = value;
+  return result;
 }
 
 google_firestore_v1_Value Value(double value);
@@ -116,15 +123,13 @@ google_firestore_v1_Value Value(const google_firestore_v1_Value& value);
 
 google_firestore_v1_Value Value(const model::ObjectValue& value);
 
-google_firestore_v1_Value Value(const google_firestore_v1_Value::Map& value);
-
 namespace details {
 
 /**
  * Recursive base case for AddPairs, below. Returns the map.
  */
-inline google_firestore_v1_Value::Map AddPairs(
-    const google_firestore_v1_Value::Map& prior) {
+inline google_firestore_v1_Value AddPairs(
+    const google_firestore_v1_Value& prior) {
   return prior;
 }
 
@@ -140,12 +145,22 @@ inline google_firestore_v1_Value::Map AddPairs(
  * @return The resulting map.
  */
 template <typename ValueType, typename... Args>
-google_firestore_v1_Value::Map AddPairs(
-    const google_firestore_v1_Value::Map& prior,
-    const std::string& key,
-    const ValueType& value,
-    Args... rest) {
-  return AddPairs(prior.insert(key, Value(value)), rest...);
+google_firestore_v1_Value AddPairs(const google_firestore_v1_Value& prior,
+                                   const std::string& key,
+                                   const ValueType& value,
+                                   Args... rest) {
+  google_firestore_v1_Value result;
+  result.which_value_type = google_firestore_v1_Value_map_value_tag;
+  pb_size_t new_count = result.map_value.fields_count + 1;
+  result.map_value.fields_count = new_count;
+  result.map_value.fields =
+      static_cast<_google_firestore_v1_MapValue_FieldsEntry*>(realloc(
+          result.map_value.fields,
+          new_count * sizeof(_google_firestore_v1_MapValue_FieldsEntry)));
+  result.map_value.fields[new_count - 1].key = nanopb::MakeBytesArray(key);
+  result.map_value.fields[new_count - 1].value = Value(value);
+
+  return AddPairs(result, rest...);
 }
 
 /**
@@ -155,8 +170,8 @@ google_firestore_v1_Value::Map AddPairs(
  *     be passed to Value().
  */
 template <typename... Args>
-google_firestore_v1_Value::Map MakeMap(Args... key_value_pairs) {
-  return AddPairs(google_firestore_v1_Value::Map(), key_value_pairs...);
+google_firestore_v1_Value MakeMap(Args... key_value_pairs) {
+  return AddPairs(google_firestore_v1_Value{}, key_value_pairs...);
 }
 
 }  // namespace details
@@ -164,11 +179,17 @@ google_firestore_v1_Value::Map MakeMap(Args... key_value_pairs) {
 template <typename... Args>
 google_firestore_v1_Value Array(Args... values) {
   std::vector<google_firestore_v1_Value> contents{Value(values)...};
-  return google_firestore_v1_Value::FromArray(std::move(contents));
+  google_firestore_v1_Value result;
+  result.which_value_type = google_firestore_v1_Value_array_value_tag;
+  result.array_value.values_count = static_cast<pb_size_t>(contents.size());
+  for (size_t i = 0; i < contents.size(); ++i) {
+    result.array_value.values[i] = contents[i];
+  }
+  return result;
 }
 
 /** Wraps an immutable sorted map into an ObjectValue. */
-model::ObjectValue WrapObject(const google_firestore_v1_Value::Map& value);
+model::ObjectValue WrapObject(const google_firestore_v1_Value& value);
 
 /**
  * Creates an ObjectValue from the given key/value pairs.
@@ -188,7 +209,7 @@ model::ObjectValue WrapObject(Args... key_value_pairs) {
  *     be passed to Value().
  */
 template <typename... Args>
-google_firestore_v1_Value::Map Map(Args... key_value_pairs) {
+google_firestore_v1_Value Map(Args... key_value_pairs) {
   return details::MakeMap(key_value_pairs...);
 }
 
@@ -200,7 +221,7 @@ model::DatabaseId DbId(std::string project = "project/(default)");
 
 google_firestore_v1_Value Ref(std::string project, absl::string_view path);
 
-model::ResourcePath Resource(absl::string_view field);
+google_firestore_v1_Value Resource(absl::string_view field);
 
 /**
  * Creates a snapshot version from the given version timestamp.
@@ -209,37 +230,23 @@ model::ResourcePath Resource(absl::string_view field);
  */
 model::SnapshotVersion Version(int64_t version);
 
-model::MutableDocument Doc(absl::string_view key,
-                           int64_t version = 0,
-                           const google_firestore_v1_Value::Map& data =
-                               google_firestore_v1_Value::Map());
-
-model::MutableDocument Doc(absl::string_view key,
-                           int64_t version,
-                           const google_firestore_v1_Value::Map& data,
-                           model::DocumentState document_state);
+model::MutableDocument Doc(
+    absl::string_view key,
+    int64_t version = 0,
+    const google_firestore_v1_Value& data = google_firestore_v1_Value{});
 
 model::MutableDocument Doc(absl::string_view key,
                            int64_t version,
                            const google_firestore_v1_Value& data);
 
-model::MutableDocument Doc(absl::string_view key,
-                           int64_t version,
-                           const google_firestore_v1_Value& data,
-                           model::DocumentState document_state);
+/** A convenience method for creating deleted docs for tests. */
+model::MutableDocument DeletedDoc(absl::string_view key, int64_t version = 0);
 
 /** A convenience method for creating deleted docs for tests. */
-model::NoDocument DeletedDoc(absl::string_view key,
-                             int64_t version = 0,
-                             bool has_committed_mutations = false);
-
-/** A convenience method for creating deleted docs for tests. */
-model::NoDocument DeletedDoc(model::DocumentKey key,
-                             int64_t version = 0,
-                             bool has_committed_mutations = false);
+model::MutableDocument DeletedDoc(model::DocumentKey key, int64_t version = 0);
 
 /** A convenience method for creating unknown docs for tests. */
-model::UnknownDocument UnknownDoc(absl::string_view key, int64_t version);
+model::MutableDocument UnknownDoc(absl::string_view key, int64_t version);
 
 /**
  * Creates a DocumentComparator that will compare Documents by the given
@@ -260,7 +267,7 @@ core::FieldFilter Filter(absl::string_view key,
 
 core::FieldFilter Filter(absl::string_view key,
                          absl::string_view op,
-                         google_firestore_v1_Value::Map value);
+                         google_firestore_v1_Value value);
 
 core::FieldFilter Filter(absl::string_view key,
                          absl::string_view op,
@@ -298,28 +305,26 @@ core::Query CollectionGroupQuery(absl::string_view collection_id);
 
 model::SetMutation SetMutation(
     absl::string_view path,
-    const google_firestore_v1_Value::Map& values =
-        google_firestore_v1_Value::Map(),
+    const google_firestore_v1_Value& values = google_firestore_v1_Value{},
     std::vector<std::pair<std::string, model::TransformOperation>> transforms =
         {});
 
 model::PatchMutation PatchMutation(
     absl::string_view path,
-    const google_firestore_v1_Value::Map& values =
-        google_firestore_v1_Value::Map(),
+    const google_firestore_v1_Value& values = google_firestore_v1_Value{},
     std::vector<std::pair<std::string, model::TransformOperation>> transforms =
         {});
 
 model::PatchMutation MergeMutation(
     absl::string_view path,
-    const google_firestore_v1_Value::Map& values,
+    const google_firestore_v1_Value& values,
     const std::vector<model::FieldPath>& update_mask,
     std::vector<std::pair<std::string, model::TransformOperation>> transforms =
         {});
 
 model::PatchMutation PatchMutationHelper(
     absl::string_view path,
-    const google_firestore_v1_Value::Map& values,
+    const google_firestore_v1_Value& values,
     std::vector<std::pair<std::string, model::TransformOperation>> transforms,
     model::Precondition precondition,
     const absl::optional<std::vector<model::FieldPath>>& update_mask);
