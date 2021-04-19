@@ -24,7 +24,11 @@
 #include <vector>
 
 #include "Firestore/Protos/nanopb/google/firestore/v1/document.nanopb.h"
+#include "Firestore/core/src/core/direction.h"
 #include "Firestore/core/src/core/core_fwd.h"
+#include "Firestore/core/src/model/document_key.h"
+#include "Firestore/core/src/model/document_set.h"
+#include "Firestore/core/src/model/precondition.h"
 #include "Firestore/core/src/model/model_fwd.h"
 #include "Firestore/core/src/nanopb/nanopb_util.h"
 #include "absl/strings/string_view.h"
@@ -149,7 +153,7 @@ google_firestore_v1_Value AddPairs(const google_firestore_v1_Value& prior,
                                    const std::string& key,
                                    const ValueType& value,
                                    Args... rest) {
-  google_firestore_v1_Value result;
+  google_firestore_v1_Value result =prior;
   result.which_value_type = google_firestore_v1_Value_map_value_tag;
   pb_size_t new_count = result.map_value.fields_count + 1;
   result.map_value.fields_count = new_count;
@@ -179,7 +183,7 @@ google_firestore_v1_Value MakeMap(Args... key_value_pairs) {
 template <typename... Args>
 google_firestore_v1_Value Array(Args... values) {
   std::vector<google_firestore_v1_Value> contents{Value(values)...};
-  google_firestore_v1_Value result;
+  google_firestore_v1_Value result{};
   result.which_value_type = google_firestore_v1_Value_array_value_tag;
   result.array_value.values_count = static_cast<pb_size_t>(contents.size());
   for (size_t i = 0; i < contents.size(); ++i) {
@@ -221,7 +225,7 @@ model::DatabaseId DbId(std::string project = "project/(default)");
 
 google_firestore_v1_Value Ref(std::string project, absl::string_view path);
 
-google_firestore_v1_Value Resource(absl::string_view field);
+        model::ResourcePath Resource(absl::string_view field);
 
 /**
  * Creates a snapshot version from the given version timestamp.
@@ -259,7 +263,7 @@ model::DocumentComparator DocComparator(absl::string_view field_path);
  * given documents.
  */
 model::DocumentSet DocSet(model::DocumentComparator comp,
-                          std::vector<model::MutableDocument> docs);
+                          std::vector<model::Document> docs);
 
 core::FieldFilter Filter(absl::string_view key,
                          absl::string_view op,

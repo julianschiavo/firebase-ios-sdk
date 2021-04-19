@@ -17,6 +17,7 @@
 #include "Firestore/core/test/unit/local/counting_query_engine.h"
 
 #include "Firestore/core/src/local/local_documents_view.h"
+#include "Firestore/core/src/immutable/sorted_map.h"
 #include "Firestore/core/src/model/model_fwd.h"
 #include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation_batch.h"
@@ -151,10 +152,10 @@ void WrappedRemoteDocumentCache::Remove(const model::DocumentKey& key) {
   subject_->Remove(key);
 }
 
-absl::optional<model::MutableDocument> WrappedRemoteDocumentCache::Get(
+model::MutableDocument WrappedRemoteDocumentCache::Get(
     const model::DocumentKey& key) {
   auto result = subject_->Get(key);
-  query_engine_->documents_read_by_key_ += result ? 1 : 0;
+  query_engine_->documents_read_by_key_ += result.is_found_document() ? 1 : 0;
   return result;
 }
 

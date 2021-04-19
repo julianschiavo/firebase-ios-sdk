@@ -32,7 +32,6 @@ using local::TargetData;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::MutableDocument;
-using model::NoDocument;
 using model::SnapshotVersion;
 using model::TargetId;
 using nanopb::ByteString;

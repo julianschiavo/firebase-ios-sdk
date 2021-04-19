@@ -88,7 +88,6 @@ using model::MutableDocument;
 using model::Mutation;
 using model::MutationResult;
 using model::NaNValue;
-using model::NoDocument;
 using model::NullValue;
 using model::NumericIncrementTransform;
 using model::ObjectValue;

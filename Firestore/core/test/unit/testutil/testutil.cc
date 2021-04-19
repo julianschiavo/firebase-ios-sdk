@@ -33,6 +33,7 @@
 #include "Firestore/core/src/model/field_transform.h"
 #include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/patch_mutation.h"
+#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/precondition.h"
 #include "Firestore/core/src/model/set_mutation.h"
 #include "Firestore/core/src/model/transform_operation.h"
@@ -53,12 +54,14 @@ using model::DocumentState;
 using model::FieldMask;
 using model::FieldPath;
 using model::FieldTransform;
+    using model::Document;
 using model::MutableDocument;
 using model::NullValue;
 using model::ObjectValue;
 using model::Precondition;
 using model::TransformOperation;
 using nanopb::ByteString;
+    using util::StringFormat;
 
 /**
  * A string sentinel that can be used with PatchMutation() to mark a field for
@@ -70,7 +73,10 @@ namespace details {
 
 google_firestore_v1_Value BlobValue(std::initializer_list<uint8_t> octets) {
   nanopb::ByteString contents{octets};
-  return google_firestore_v1_Value::FromBlob(std::move(contents));
+  google_firestore_v1_Value result{};
+  result.which_value_type = google_firestore_v1_Value_bytes_value_tag;
+  result.bytes_value = nanopb::MakeBytesArray(octets.begin(), octets.size());
+  return result;
 }
 
 }  // namespace details
@@ -149,8 +155,11 @@ model::DatabaseId DbId(std::string project) {
 }
 
 google_firestore_v1_Value Ref(std::string project, absl::string_view path) {
-  return google_firestore_v1_Value::FromReference(DbId(std::move(project)),
-                                                  Key(path));
+  google_firestore_v1_Value result{};
+  result.which_value_type = google_firestore_v1_Value_reference_value_tag;
+  result.string_value = nanopb::MakeBytesArray(StringFormat("projects/%s/databases/(default)/documents/%s",
+                                                            project, path));
+  return result;
 }
 
 model::ResourcePath Resource(absl::string_view field) {
@@ -190,9 +199,9 @@ DocumentComparator DocComparator(absl::string_view field_path) {
   return Query("docs").AddingOrderBy(OrderBy(field_path)).Comparator();
 }
 
-DocumentSet DocSet(DocumentComparator comp, std::vector<MutableDocument> docs) {
+DocumentSet DocSet(DocumentComparator comp, std::vector<Document> docs) {
   DocumentSet set{std::move(comp)};
-  for (const MutableDocument& doc : docs) {
+  for (const Document& doc : docs) {
     set = set.insert(doc);
   }
   return set;
@@ -289,7 +298,7 @@ core::Query CollectionGroupQuery(absl::string_view collection_id) {
 // UserDataWriter changes are ported from Web and Android.
 model::SetMutation SetMutation(
     absl::string_view path,
-    const google_firestore_v1_Value::Map& values,
+    const google_firestore_v1_Value& values,
     std::vector<std::pair<std::string, TransformOperation>> transforms) {
   std::vector<FieldTransform> field_transforms;
   for (auto&& pair : transforms) {
@@ -299,7 +308,7 @@ model::SetMutation SetMutation(
     field_transforms.push_back(std::move(transform));
   }
 
-  return model::SetMutation(Key(path), model::ObjectValue::FromMap(values),
+  return model::SetMutation(Key(path), model::ObjectValue{values},
                             model::Precondition::None(),
                             std::move(field_transforms));
 }
@@ -309,7 +318,7 @@ model::SetMutation SetMutation(
 // UserDataWriter changes are ported from Web and Android.
 model::PatchMutation PatchMutation(
     absl::string_view path,
-    const google_firestore_v1_Value::Map& values,
+    const google_firestore_v1_Value& values,
     // TODO(rsgowman): Investigate changing update_mask to a set.
     std::vector<std::pair<std::string, TransformOperation>> transforms) {
   return PatchMutationHelper(path, values, transforms,
@@ -321,7 +330,7 @@ model::PatchMutation PatchMutation(
 // UserDataWriter changes are ported from Web and Android.
 model::PatchMutation MergeMutation(
     absl::string_view path,
-    const google_firestore_v1_Value::Map& values,
+    const google_firestore_v1_Value& values,
     const std::vector<model::FieldPath>& update_mask,
     std::vector<std::pair<std::string, TransformOperation>> transforms) {
   return PatchMutationHelper(path, values, transforms, Precondition::None(),
@@ -345,16 +354,15 @@ model::PatchMutation PatchMutationHelper(
     field_transforms.push_back(std::move(transform));
   }
 
-  for (const auto& kv : values) {
-    FieldPath field_path = Field(kv.first);
+  for (pb_size_t i = 0; i < values.map_value.fields_count;
+  ++i){
+    FieldPath field_path = Field(nanopb::MakeStringView(values.map_value.fields[i].key));
     field_mask_paths.insert(field_path);
-
-    const google_firestore_v1_Value& value = kv.second;
-    if (!value.is_string() || value.string_value() != kDeleteSentinel) {
-      object_value = object_value.Set(field_path, value);
-    } else if (value.string_value() == kDeleteSentinel) {
-      object_value =
-          object_value.Set(field_path, object_value.Delete(field_path));
+    const google_firestore_v1_Value& value = values.map_value.fields[i].value;
+    if (value.which_value_type != google_firestore_v1_Value_string_value_tag || nanopb::MakeStringView(value.string_value) != kDeleteSentinel) {
+     object_value.Set(field_path, value);
+    } else if (nanopb::MakeStringView(value.string_value) == kDeleteSentinel) {
+          object_value.Delete(field_path);
     }
   }
 
@@ -378,9 +386,13 @@ std::pair<std::string, TransformOperation> Increment(
 
 std::pair<std::string, TransformOperation> ArrayUnion(
     std::string field, std::vector<google_firestore_v1_Value> operands) {
+  google_firestore_v1_ArrayValue array_value;
+  array_value.values_count = static_cast<pb_size_t>(operands.size());
+  for (size_t i = 0; i < operands.size(); ++i) {
+    array_value.values[i] = operands[i];
+  }
   model::ArrayTransform transform(TransformOperation::Type::ArrayUnion,
-                                  std::move(operands));
-
+                                  array_value);
   return std::pair<std::string, TransformOperation>(std::move(field),
                                                     std::move(transform));
 }
@@ -395,7 +407,7 @@ model::VerifyMutation VerifyMutation(absl::string_view path, int64_t version) {
 }
 
 model::MutationResult MutationResult(int64_t version) {
-  return model::MutationResult(Version(version), absl::nullopt);
+  return model::MutationResult(Version(version), google_firestore_v1_ArrayValue{});
 }
 
 nanopb::ByteString ResumeToken(int64_t snapshot_version) {

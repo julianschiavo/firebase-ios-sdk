@@ -58,9 +58,7 @@ using firebase::firestore::model::Document;
 using firebase::firestore::model::DocumentKey;
 using firebase::firestore::model::FieldPath;
 using firebase::firestore::google_firestore_v1_Value;
-using firebase::firestore::google_firestore_v1_ValueOptions;
 using firebase::firestore::model::ObjectValue;
-using firebase::firestore::model::ServerTimestampBehavior;
 using firebase::firestore::remote::Serializer;
 using firebase::firestore::nanopb::MakeNSData;
 using firebase::firestore::util::MakeString;
@@ -178,11 +176,12 @@ ServerTimestampBehavior InternalServerTimestampBehavior(FIRServerTimestampBehavi
 
 - (nullable NSDictionary<NSString *, id> *)dataWithServerTimestampBehavior:
     (FIRServerTimestampBehavior)serverTimestampBehavior {
-  FieldValueOptions options = [self optionsForServerTimestampBehavior:serverTimestampBehavior];
   absl::optional<ObjectValue> data = _snapshot.GetData();
   if (!data) return nil;
 
-  return [self convertedValue:*data options:options];
+  FSTUserDataWriter *dataWriter = [[FSTUserDataWriter alloc] initWithFirestore:_snapshot.firestore()
+                                                       serverTimestampBehavior:serverTimestampBehavior];
+  return [dataWriter convertedValue:data->Get()];
 }
 
 - (nullable id)valueForField:(id)field {
@@ -199,42 +198,15 @@ ServerTimestampBehavior InternalServerTimestampBehavior(FIRServerTimestampBehavi
   } else {
     ThrowInvalidArgument("Subscript key must be an NSString or FIRFieldPath.");
   }
-
-  absl::optional<FieldValue> fieldValue = _snapshot.GetValue(fieldPath);
-  FieldValueOptions options = [self optionsForServerTimestampBehavior:serverTimestampBehavior];
-  return !fieldValue ? nil : [self convertedValue:*fieldValue options:options];
+  absl::optional<google_firestore_v1_Value> fieldValue = _snapshot.GetValue(fieldPath);
+  if (!fieldValue) return nil;
+  FSTUserDataWriter *dataWriter = [[FSTUserDataWriter alloc] initWithFirestore:_snapshot.firestore()
+                                                       serverTimestampBehavior:serverTimestampBehavior];
+  return [dataWriter convertedValue:*fieldValue];
 }
 
 - (nullable id)objectForKeyedSubscript:(id)key {
   return [self valueForField:key];
-}
-
-- (FieldValueOptions)optionsForServerTimestampBehavior:
-    (FIRServerTimestampBehavior)serverTimestampBehavior {
-  return FieldValueOptions(InternalServerTimestampBehavior(serverTimestampBehavior));
-}
-
-// TODO(mutabledocuments): Replace this method and call UserDataWriter directly
-- (id)convertedValue:(FieldValue)value options:(const FieldValueOptions &)options {
-  FIRServerTimestampBehavior behavior;
-  switch (options.server_timestamp_behavior()) {
-    case ServerTimestampBehavior::kNone:
-      behavior = FIRServerTimestampBehaviorNone;
-      break;
-    case ServerTimestampBehavior::kEstimate:
-      behavior = FIRServerTimestampBehaviorEstimate;
-      break;
-    case ServerTimestampBehavior::kPrevious:
-      behavior = FIRServerTimestampBehaviorPrevious;
-      break;
-    default:
-      HARD_FAIL("Unexpected server timestamp option: %s", options.server_timestamp_behavior());
-  }
-
-  FSTUserDataWriter *dataWriter = [[FSTUserDataWriter alloc] initWithFirestore:_snapshot.firestore()
-                                                       serverTimestampBehavior:behavior];
-  google_firestore_v1_Value protoValue = _serializer->EncodeFieldValue(value);
-  return [dataWriter convertedValue:protoValue];
 }
 
 @end

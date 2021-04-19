@@ -45,7 +45,6 @@ using model::MutableDocument;
 using model::MutableDocumentMap;
 using model::Mutation;
 using model::MutationBatch;
-using model::NoDocument;
 using model::ResourcePath;
 using model::SnapshotVersion;
 
