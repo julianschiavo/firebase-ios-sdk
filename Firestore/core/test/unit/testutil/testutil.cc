@@ -27,13 +27,13 @@
 #include "Firestore/core/src/core/order_by.h"
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/model/delete_mutation.h"
+#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/document_set.h"
 #include "Firestore/core/src/model/field_mask.h"
 #include "Firestore/core/src/model/field_path.h"
 #include "Firestore/core/src/model/field_transform.h"
 #include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/patch_mutation.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/precondition.h"
 #include "Firestore/core/src/model/set_mutation.h"
 #include "Firestore/core/src/model/transform_operation.h"
@@ -48,20 +48,20 @@ namespace firebase {
 namespace firestore {
 namespace testutil {
 
+using model::Document;
 using model::DocumentComparator;
 using model::DocumentSet;
 using model::DocumentState;
 using model::FieldMask;
 using model::FieldPath;
 using model::FieldTransform;
-    using model::Document;
 using model::MutableDocument;
 using model::NullValue;
 using model::ObjectValue;
 using model::Precondition;
 using model::TransformOperation;
 using nanopb::ByteString;
-    using util::StringFormat;
+using util::StringFormat;
 
 /**
  * A string sentinel that can be used with PatchMutation() to mark a field for
@@ -157,8 +157,8 @@ model::DatabaseId DbId(std::string project) {
 google_firestore_v1_Value Ref(std::string project, absl::string_view path) {
   google_firestore_v1_Value result{};
   result.which_value_type = google_firestore_v1_Value_reference_value_tag;
-  result.string_value = nanopb::MakeBytesArray(StringFormat("projects/%s/databases/(default)/documents/%s",
-                                                            project, path));
+  result.string_value = nanopb::MakeBytesArray(StringFormat(
+      "projects/%s/databases/(default)/documents/%s", project, path));
   return result;
 }
 
@@ -354,15 +354,16 @@ model::PatchMutation PatchMutationHelper(
     field_transforms.push_back(std::move(transform));
   }
 
-  for (pb_size_t i = 0; i < values.map_value.fields_count;
-  ++i){
-    FieldPath field_path = Field(nanopb::MakeStringView(values.map_value.fields[i].key));
+  for (pb_size_t i = 0; i < values.map_value.fields_count; ++i) {
+    FieldPath field_path =
+        Field(nanopb::MakeStringView(values.map_value.fields[i].key));
     field_mask_paths.insert(field_path);
     const google_firestore_v1_Value& value = values.map_value.fields[i].value;
-    if (value.which_value_type != google_firestore_v1_Value_string_value_tag || nanopb::MakeStringView(value.string_value) != kDeleteSentinel) {
-     object_value.Set(field_path, value);
+    if (value.which_value_type != google_firestore_v1_Value_string_value_tag ||
+        nanopb::MakeStringView(value.string_value) != kDeleteSentinel) {
+      object_value.Set(field_path, value);
     } else if (nanopb::MakeStringView(value.string_value) == kDeleteSentinel) {
-          object_value.Delete(field_path);
+      object_value.Delete(field_path);
     }
   }
 
@@ -407,7 +408,8 @@ model::VerifyMutation VerifyMutation(absl::string_view path, int64_t version) {
 }
 
 model::MutationResult MutationResult(int64_t version) {
-  return model::MutationResult(Version(version), google_firestore_v1_ArrayValue{});
+  return model::MutationResult(Version(version),
+                               google_firestore_v1_ArrayValue{});
 }
 
 nanopb::ByteString ResumeToken(int64_t snapshot_version) {

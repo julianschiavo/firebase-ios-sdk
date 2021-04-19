@@ -19,8 +19,8 @@
 #include <utility>
 
 #include "Firestore/core/src/core/view.h"
-#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/core/view_snapshot.h"
+#include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/remote/remote_event.h"
 
 namespace firebase {
@@ -30,8 +30,8 @@ namespace testutil {
 using core::View;
 using core::ViewChange;
 using core::ViewSnapshot;
+using model::Document;
 using model::DocumentKeySet;
-    using model::Document;
 using model::DocumentMap;
 using model::MutableDocument;
 using nanopb::ByteString;
@@ -40,7 +40,7 @@ using remote::TargetChange;
 model::DocumentMap DocUpdates(const std::vector<model::MutableDocument>& docs) {
   DocumentMap updates;
   for (const MutableDocument& doc : docs) {
-    updates = updates.insert(doc.key(), Document{doc});
+    updates = updates.insert(doc.key(), doc);
   }
   return updates;
 }

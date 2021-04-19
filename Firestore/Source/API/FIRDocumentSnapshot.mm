@@ -67,27 +67,6 @@ using firebase::firestore::google_firestore_v1_Value;
 
 NS_ASSUME_NONNULL_BEGIN
 
-namespace {
-
-/**
- * Converts a public FIRServerTimestampBehavior into its internal equivalent.
- */
-ServerTimestampBehavior InternalServerTimestampBehavior(FIRServerTimestampBehavior behavior) {
-  // TODO(mutabledocuments): Remove since we only use FIRServerTimestampBehavior
-  switch (behavior) {
-    case FIRServerTimestampBehaviorNone:
-      return ServerTimestampBehavior::kNone;
-    case FIRServerTimestampBehaviorEstimate:
-      return ServerTimestampBehavior::kEstimate;
-    case FIRServerTimestampBehaviorPrevious:
-      return ServerTimestampBehavior::kPrevious;
-    default:
-      HARD_FAIL("Unexpected server timestamp option: %s", behavior);
-  }
-}
-
-}  // namespace
-
 @implementation FIRDocumentSnapshot {
   DocumentSnapshot _snapshot;
 
@@ -179,8 +158,9 @@ ServerTimestampBehavior InternalServerTimestampBehavior(FIRServerTimestampBehavi
   absl::optional<ObjectValue> data = _snapshot.GetData();
   if (!data) return nil;
 
-  FSTUserDataWriter *dataWriter = [[FSTUserDataWriter alloc] initWithFirestore:_snapshot.firestore()
-                                                       serverTimestampBehavior:serverTimestampBehavior];
+  FSTUserDataWriter *dataWriter =
+      [[FSTUserDataWriter alloc] initWithFirestore:_snapshot.firestore()
+                           serverTimestampBehavior:serverTimestampBehavior];
   return [dataWriter convertedValue:data->Get()];
 }
 
@@ -200,8 +180,9 @@ ServerTimestampBehavior InternalServerTimestampBehavior(FIRServerTimestampBehavi
   }
   absl::optional<google_firestore_v1_Value> fieldValue = _snapshot.GetValue(fieldPath);
   if (!fieldValue) return nil;
-  FSTUserDataWriter *dataWriter = [[FSTUserDataWriter alloc] initWithFirestore:_snapshot.firestore()
-                                                       serverTimestampBehavior:serverTimestampBehavior];
+  FSTUserDataWriter *dataWriter =
+      [[FSTUserDataWriter alloc] initWithFirestore:_snapshot.firestore()
+                           serverTimestampBehavior:serverTimestampBehavior];
   return [dataWriter convertedValue:*fieldValue];
 }
 

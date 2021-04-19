@@ -60,7 +60,6 @@ class DocumentSet;
 class FieldMask;
 class FieldPath;
 class FieldTransform;
-class FieldValue;
 class MutableDocument;
 class Mutation;
 class MutationBatch;

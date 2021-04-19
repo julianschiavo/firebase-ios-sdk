@@ -249,7 +249,7 @@ TEST_F(QueryListenerTest, RaisesDocumentMetadataEventsOnlyWhenSpecified) {
 
   Query query = testutil::Query("rooms");
   MutableDocument doc1 =
-      Doc("rooms/Eros", 1, Map("name", "Eros"), DocumentState::kLocalMutations);
+      Doc("rooms/Eros", 1, Map("name", "Eros")).SetHasLocalMutations();
   MutableDocument doc2 = Doc("rooms/Hades", 2, Map("name", "Hades"));
   MutableDocument doc1_prime = Doc("rooms/Eros", 1, Map("name", "Eros"));
   MutableDocument doc3 = Doc("rooms/Other", 3, Map("name", "Other"));
@@ -299,9 +299,9 @@ TEST_F(QueryListenerTest,
 
   Query query = testutil::Query("rooms");
   MutableDocument doc1 =
-      Doc("rooms/Eros", 1, Map("name", "Eros"), DocumentState::kLocalMutations);
-  MutableDocument doc2 = Doc("rooms/Hades", 2, Map("name", "Hades"),
-                             DocumentState::kLocalMutations);
+      Doc("rooms/Eros", 1, Map("name", "Eros")).SetHasLocalMutations();
+  MutableDocument doc2 =
+      Doc("rooms/Hades", 2, Map("name", "Hades")).SetHasLocalMutations();
   MutableDocument doc1_prime = Doc("rooms/Eros", 1, Map("name", "Eros"));
   MutableDocument doc2_prime = Doc("rooms/Hades", 2, Map("name", "Hades"));
   MutableDocument doc3 = Doc("rooms/Other", 3, Map("name", "Other"));
@@ -347,7 +347,7 @@ TEST_F(QueryListenerTest,
 
   Query query = testutil::Query("rooms");
   MutableDocument doc1 =
-      Doc("rooms/Eros", 1, Map("name", "Eros"), DocumentState::kLocalMutations);
+      Doc("rooms/Eros", 1, Map("name", "Eros")).SetHasLocalMutations();
   MutableDocument doc2 = Doc("rooms/Hades", 2, Map("name", "Hades"));
   MutableDocument doc1_prime = Doc("rooms/Eros", 1, Map("name", "Eros"));
   MutableDocument doc3 = Doc("rooms/Other", 3, Map("name", "Other"));

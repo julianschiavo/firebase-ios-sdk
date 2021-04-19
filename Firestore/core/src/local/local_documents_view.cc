@@ -91,7 +91,7 @@ DocumentMap LocalDocumentsView::GetLocalViewOfDocuments(
 
   DocumentMap results;
   for (const auto& kv : docs) {
-    results = results.insert(kv.first, Document{kv.second});
+    results = results.insert(kv.first, kv.second);
   }
   return results;
 }

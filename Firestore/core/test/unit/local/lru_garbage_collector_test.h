@@ -23,7 +23,7 @@
 #include "Firestore/core/src/auth/user.h"
 #include "Firestore/core/src/local/reference_set.h"
 #include "Firestore/core/src/local/target_data.h"
-#include "Firestore/core/src/model/field_value.h"
+#include "Firestore/core/src/model/object_value.h"
 #include "Firestore/core/src/model/types.h"
 #include "gtest/gtest.h"
 

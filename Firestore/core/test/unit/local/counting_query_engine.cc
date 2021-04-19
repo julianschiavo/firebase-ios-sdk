@@ -16,8 +16,8 @@
 
 #include "Firestore/core/test/unit/local/counting_query_engine.h"
 
-#include "Firestore/core/src/local/local_documents_view.h"
 #include "Firestore/core/src/immutable/sorted_map.h"
+#include "Firestore/core/src/local/local_documents_view.h"
 #include "Firestore/core/src/model/model_fwd.h"
 #include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation_batch.h"

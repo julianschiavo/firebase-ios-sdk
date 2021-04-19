@@ -16,7 +16,6 @@
 
 #include "Firestore/core/src/model/value_util.h"
 #include "Firestore/core/src/model/database_id.h"
-#include "Firestore/core/src/model/field_value.h"
 #include "Firestore/core/src/nanopb/message.h"
 #include "Firestore/core/src/remote/serializer.h"
 #include "Firestore/core/src/util/comparison.h"
@@ -56,8 +55,7 @@ class ValueUtilTest : public ::testing::Test {
  public:
   template <typename T>
   google_firestore_v1_Value Wrap(T input) {
-    google_firestore_v1_Value fv = Value(input);
-    return serializer.EncodeFieldValue(fv);
+    return Value(input);
   }
 
   template <typename... Args>

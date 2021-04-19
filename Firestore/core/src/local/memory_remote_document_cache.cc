@@ -96,7 +96,7 @@ MutableDocumentMap MemoryRemoteDocumentCache::GetMatching(
       continue;
     }
 
-    if (query.Matches(Document{document})) {
+    if (query.Matches(document)) {
       results = results.insert(key, document);
     }
   }

@@ -24,12 +24,12 @@
 #include <vector>
 
 #include "Firestore/Protos/nanopb/google/firestore/v1/document.nanopb.h"
-#include "Firestore/core/src/core/direction.h"
 #include "Firestore/core/src/core/core_fwd.h"
+#include "Firestore/core/src/core/direction.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/document_set.h"
-#include "Firestore/core/src/model/precondition.h"
 #include "Firestore/core/src/model/model_fwd.h"
+#include "Firestore/core/src/model/precondition.h"
 #include "Firestore/core/src/nanopb/nanopb_util.h"
 #include "absl/strings/string_view.h"
 
@@ -153,7 +153,7 @@ google_firestore_v1_Value AddPairs(const google_firestore_v1_Value& prior,
                                    const std::string& key,
                                    const ValueType& value,
                                    Args... rest) {
-  google_firestore_v1_Value result =prior;
+  google_firestore_v1_Value result = prior;
   result.which_value_type = google_firestore_v1_Value_map_value_tag;
   pb_size_t new_count = result.map_value.fields_count + 1;
   result.map_value.fields_count = new_count;
@@ -225,7 +225,7 @@ model::DatabaseId DbId(std::string project = "project/(default)");
 
 google_firestore_v1_Value Ref(std::string project, absl::string_view path);
 
-        model::ResourcePath Resource(absl::string_view field);
+model::ResourcePath Resource(absl::string_view field);
 
 /**
  * Creates a snapshot version from the given version timestamp.

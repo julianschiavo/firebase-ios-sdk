@@ -31,7 +31,7 @@ namespace model {
  */
 class Document {
  public:
-  explicit Document(MutableDocument document) : document_{std::move(document)} {
+  Document(MutableDocument document) : document_{std::move(document)} {
   }
 
   Document() = default;

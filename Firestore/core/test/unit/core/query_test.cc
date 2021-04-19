@@ -22,7 +22,6 @@
 #include "Firestore/core/src/core/field_filter.h"
 #include "Firestore/core/src/model/document_set.h"
 #include "Firestore/core/src/model/field_path.h"
-#include "Firestore/core/src/model/field_value.h"
 #include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/resource_path.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
@@ -33,7 +32,6 @@ namespace firebase {
 namespace firestore {
 namespace core {
 
-using google_firestore_v1_Value;
 using firebase::firestore::util::ComparisonResult;
 using model::DocumentComparator;
 using model::FieldPath;

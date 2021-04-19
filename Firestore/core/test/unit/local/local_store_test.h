@@ -24,7 +24,6 @@
 #include "Firestore/core/src/local/local_store.h"
 #include "Firestore/core/src/local/query_engine.h"
 #include "Firestore/core/src/local/query_result.h"
-#include "Firestore/core/src/model/document_map.h"
 #include "Firestore/core/src/model/mutation_batch.h"
 #include "Firestore/core/test/unit/local/counting_query_engine.h"
 #include "gtest/gtest.h"

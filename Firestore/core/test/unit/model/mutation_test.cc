@@ -19,11 +19,9 @@
 #include <utility>
 
 #include "Firestore/core/src/model/delete_mutation.h"
-#include "Firestore/core/src/model/field_value.h"
-#include "Firestore/core/src/model/maybe_document.h"
 #include "Firestore/core/src/model/mutable_document.h"
-#include "Firestore/core/src/model/no_document.h"
 #include "Firestore/core/src/model/patch_mutation.h"
+#include "Firestore/core/src/model/server_timestamp_util.h"
 #include "Firestore/core/src/model/set_mutation.h"
 #include "Firestore/core/src/model/transform_operation.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
@@ -39,6 +37,7 @@ using testutil::DeletedDoc;
 using testutil::DeleteMutation;
 using testutil::Doc;
 using testutil::Field;
+using testutil::Key;
 using testutil::Map;
 using testutil::MergeMutation;
 using testutil::MutationResult;
@@ -51,110 +50,110 @@ using testutil::WrapObject;
 const Timestamp now = Timestamp::Now();
 
 TEST(MutationTest, AppliesSetsToDocuments) {
-  MutableDocument base_doc =
+  MutableDocument doc =
       Doc("collection/key", 0, Map("foo", "foo-value", "baz", "baz-value"));
 
   Mutation set = SetMutation("collection/key", Map("bar", "bar-value"));
-  auto result = set.ApplyToLocalView(base_doc, now);
+  set.ApplyToLocalView(doc, now);
 
-  EXPECT_EQ(result, Doc("collection/key", 0, Map("bar", "bar-value"),
-                        DocumentState::kLocalMutations));
+  EXPECT_EQ(
+      doc,
+      Doc("collection/key", 0, Map("bar", "bar-value")).SetHasLocalMutations());
 }
 
 TEST(MutationTest, AppliesPatchToDocuments) {
-  MutableDocument base_doc =
+  MutableDocument doc =
       Doc("collection/key", 0,
           Map("foo", Map("bar", "bar-value"), "baz", "baz-value"));
 
   Mutation patch =
       PatchMutation("collection/key", Map("foo.bar", "new-bar-value"));
-  auto result = patch.ApplyToLocalView(base_doc, now);
+  patch.ApplyToLocalView(doc, now);
 
-  EXPECT_EQ(result,
+  EXPECT_EQ(doc,
             Doc("collection/key", 0,
-                Map("foo", Map("bar", "new-bar-value"), "baz", "baz-value"),
-                DocumentState::kLocalMutations));
+                Map("foo", Map("bar", "new-bar-value"), "baz", "baz-value"))
+                .SetHasLocalMutations());
 }
 
 TEST(MutationTest, AppliesPatchWithMergeToNoDocuments) {
-  NoDocument base_doc = DeletedDoc("collection/key", 0);
+  MutableDocument doc = DeletedDoc("collection/key", 0);
 
   Mutation upsert = MergeMutation(
       "collection/key", Map("foo.bar", "new-bar-value"), {Field("foo.bar")});
-  auto result = upsert.ApplyToLocalView(base_doc, now);
+  upsert.ApplyToLocalView(doc, now);
 
-  EXPECT_EQ(result,
-            Doc("collection/key", 0, Map("foo", Map("bar", "new-bar-value")),
-                DocumentState::kLocalMutations));
+  EXPECT_EQ(doc,
+            Doc("collection/key", 0, Map("foo", Map("bar", "new-bar-value")))
+                .SetHasLocalMutations());
 }
 
 TEST(MutationTest, AppliesPatchWithMergeToNullDocuments) {
-  absl::optional<MaybeDocument> base_doc;
+  MutableDocument doc = MutableDocument::InvalidDocument(Key("collection/key"));
 
   Mutation upsert = MergeMutation(
       "collection/key", Map("foo.bar", "new-bar-value"), {Field("foo.bar")});
-  auto result = upsert.ApplyToLocalView(base_doc, now);
+  upsert.ApplyToLocalView(doc, now);
 
-  EXPECT_EQ(result,
-            Doc("collection/key", 0, Map("foo", Map("bar", "new-bar-value")),
-                DocumentState::kLocalMutations));
+  EXPECT_EQ(doc,
+            Doc("collection/key", 0, Map("foo", Map("bar", "new-bar-value")))
+                .SetHasLocalMutations());
 }
 
 TEST(MutationTest, DeletesValuesFromTheFieldMask) {
-  MutableDocument base_doc =
+  MutableDocument doc =
       Doc("collection/key", 0,
           Map("foo", Map("bar", "bar-value", "baz", "baz-value")));
 
   Mutation patch = MergeMutation("collection/key", Map(), {Field("foo.bar")});
-  auto result = patch.ApplyToLocalView(base_doc, now);
+  patch.ApplyToLocalView(doc, now);
 
-  EXPECT_EQ(result,
-            Doc("collection/key", 0, Map("foo", Map("baz", "baz-value")),
-                DocumentState::kLocalMutations));
+  EXPECT_EQ(doc, Doc("collection/key", 0, Map("foo", Map("baz", "baz-value")))
+                     .SetHasLocalMutations());
 }
 
 TEST(MutationTest, PatchesPrimitiveValue) {
-  MutableDocument base_doc =
+  MutableDocument doc =
       Doc("collection/key", 0, Map("foo", "foo-value", "baz", "baz-value"));
 
   Mutation patch =
       PatchMutation("collection/key", Map("foo.bar", "new-bar-value"));
-  auto result = patch.ApplyToLocalView(base_doc, now);
+  patch.ApplyToLocalView(doc, now);
 
-  EXPECT_EQ(result,
+  EXPECT_EQ(doc,
             Doc("collection/key", 0,
-                Map("foo", Map("bar", "new-bar-value"), "baz", "baz-value"),
-                DocumentState::kLocalMutations));
+                Map("foo", Map("bar", "new-bar-value"), "baz", "baz-value"))
+                .SetHasLocalMutations());
 }
 
 TEST(MutationTest, PatchingDeletedDocumentsDoesNothing) {
-  NoDocument base_doc = testutil::DeletedDoc("collection/key", 0);
+  MutableDocument doc = testutil::DeletedDoc("collection/key", 0);
 
   Mutation patch = PatchMutation("collection/key", Map("foo", "bar"));
-  auto result = patch.ApplyToLocalView(base_doc, now);
+  patch.ApplyToLocalView(doc, now);
 
-  EXPECT_EQ(result, base_doc);
+  EXPECT_EQ(doc, testutil::DeletedDoc("collection/key", 0));
 }
 
 TEST(MutationTest, AppliesLocalServerTimestampTransformToDocuments) {
-  MutableDocument base_doc =
+  MutableDocument doc =
       Doc("collection/key", 0,
           Map("foo", Map("bar", "bar-value"), "baz", "baz-value"));
 
   Mutation transform = PatchMutation("collection/key", Map(),
                                      {{"foo.bar", ServerTimestampTransform()}});
-  auto result = transform.ApplyToLocalView(base_doc, now);
+  transform.ApplyToLocalView(doc, now);
 
   // Server timestamps aren't parsed, so we manually insert it.
   ObjectValue expected_data =
       WrapObject("foo", Map("bar", "<server-timestamp>"), "baz", "baz-value");
-  expected_data =
-      expected_data.Set(Field("foo.bar"), FieldValue::FromServerTimestamp(now));
+  expected_data.Set(Field("foo.bar"),
+                    EncodeServerTimestamp(now, absl::nullopt));
 
   MutableDocument expected_doc =
-      Doc("collection/key", 0, expected_data, DocumentState::kLocalMutations);
+      Doc("collection/key", 0, expected_data.Get()).SetHasLocalMutations();
 
-  EXPECT_EQ(result, expected_doc);
+  EXPECT_EQ(doc, expected_doc);
 }
 
 namespace {
@@ -185,7 +184,7 @@ void TransformBaseDoc(const FieldValue::Map& base_data,
   }
 
   MutableDocument expected_doc =
-      Doc("collection/key", 0, expected_data, DocumentState::kLocalMutations);
+      Doc("collection/key", 0, expected_data).SetHasLocalMutations();
 
   EXPECT_EQ(current_doc, expected_doc);
 }
@@ -410,22 +409,21 @@ TEST(MutationTest, AppliesLocalArrayRemoveTransformWithNonPrimitiveElements) {
 }
 
 TEST(MutationTest, AppliesServerAckedIncrementTransformToDocuments) {
-  MutableDocument base_doc = Doc("collection/key", 0, Map("sum", 1));
+  MutableDocument doc = Doc("collection/key", 0, Map("sum", 1));
 
   Mutation transform =
       SetMutation("collection/key", Map(), {{"sum", Increment(2)}});
 
   model::MutationResult mutation_result(Version(1), FieldValueVector(3));
 
-  MaybeDocument result =
-      transform.ApplyToRemoteDocument(base_doc, mutation_result);
+  MaybeDocument result = transform.ApplyToRemoteDocument(doc, mutation_result);
 
   EXPECT_EQ(result, Doc("collection/key", 1, Map("sum", 3),
                         DocumentState::kCommittedMutations));
 }
 
 TEST(MutationTest, AppliesServerAckedServerTimestampTransformToDocuments) {
-  MutableDocument base_doc =
+  MutableDocument doc =
       Doc("collection/key", 0,
           Map("foo", Map("bar", "bar-value"), "baz", "baz-value"));
 
@@ -434,8 +432,7 @@ TEST(MutationTest, AppliesServerAckedServerTimestampTransformToDocuments) {
 
   model::MutationResult mutation_result(Version(1), FieldValueVector(now));
 
-  MaybeDocument result =
-      transform.ApplyToRemoteDocument(base_doc, mutation_result);
+  MaybeDocument result = transform.ApplyToRemoteDocument(doc, mutation_result);
 
   MutableDocument expected_doc =
       Doc("collection/key", 1, Map("foo", Map("bar", now), "baz", "baz-value"),
@@ -445,7 +442,7 @@ TEST(MutationTest, AppliesServerAckedServerTimestampTransformToDocuments) {
 }
 
 TEST(MutationTest, AppliesServerAckedArrayTransformsToDocuments) {
-  MutableDocument base_doc =
+  MutableDocument doc =
       Doc("collection/key", 0,
           Map("array_1", Array(1, 2), "array_2", Array("a", "b")));
 
@@ -459,42 +456,37 @@ TEST(MutationTest, AppliesServerAckedArrayTransformsToDocuments) {
   model::MutationResult mutation_result(Version(1),
                                         FieldValueVector(nullptr, nullptr));
 
-  MaybeDocument result =
-      transform.ApplyToRemoteDocument(base_doc, mutation_result);
+  transform.ApplyToRemoteDocument(doc, mutation_result);
 
-  EXPECT_EQ(result, Doc("collection/key", 1,
-                        Map("array_1", Array(1, 2, 3), "array_2", Array("b")),
-                        DocumentState::kCommittedMutations));
+  EXPECT_EQ(doc, Doc("collection/key", 1,
+                     Map("array_1", Array(1, 2, 3), "array_2", Array("b")).SetHasCommittedMutations());
 }
 
 TEST(MutationTest, DeleteDeletes) {
-  MutableDocument base_doc = Doc("collection/key", 0, Map("foo", "bar"));
+  MutableDocument doc = Doc("collection/key", 0, Map("foo", "bar"));
 
   Mutation del = DeleteMutation("collection/key");
-  auto result = del.ApplyToLocalView(base_doc, now);
+  auto result = del.ApplyToLocalView(doc, now);
 
   EXPECT_EQ(result, DeletedDoc("collection/key", 0));
 }
 
 TEST(MutationTest, SetWithMutationResult) {
-  MutableDocument base_doc = Doc("collection/key", 0, Map("foo", "bar"));
+  MutableDocument doc = Doc("collection/key", 0, Map("foo", "bar"));
 
   Mutation set = SetMutation("collection/key", Map("foo", "new-bar"));
-  MaybeDocument result = set.ApplyToRemoteDocument(base_doc, MutationResult(4));
+  set.ApplyToRemoteDocument(doc, MutationResult(4));
 
-  EXPECT_EQ(result, Doc("collection/key", 4, Map("foo", "new-bar"),
-                        DocumentState::kCommittedMutations));
+  EXPECT_EQ(doc, Doc("collection/key", 4, Map("foo", "new-bar").SetHasCommittedMutations());
 }
 
 TEST(MutationTest, PatchWithMutationResult) {
-  MutableDocument base_doc = Doc("collection/key", 0, Map("foo", "bar"));
+  MutableDocument doc = Doc("collection/key", 0, Map("foo", "bar"));
 
   Mutation patch = PatchMutation("collection/key", Map("foo", "new-bar"));
-  MaybeDocument result =
-      patch.ApplyToRemoteDocument(base_doc, MutationResult(4));
+  patch.ApplyToRemoteDocument(doc, MutationResult(4));
 
-  EXPECT_EQ(result, Doc("collection/key", 4, Map("foo", "new-bar"),
-                        DocumentState::kCommittedMutations));
+  EXPECT_EQ(doc, Doc("collection/key", 4, Map("foo", "new-bar")).SetHasCommittedMutations());
 }
 
 TEST(MutationTest, Transitions) {

@@ -25,7 +25,6 @@
 #include "Firestore/core/src/core/view_snapshot.h"
 #include "Firestore/core/src/model/document_key_set.h"
 #include "Firestore/core/src/model/document_set.h"
-#include "Firestore/core/src/model/no_document.h"
 #include "Firestore/core/src/model/resource_path.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
 #include "Firestore/core/test/unit/testutil/view_testing.h"
@@ -37,7 +36,6 @@ namespace firebase {
 namespace firestore {
 namespace core {
 
-using google_firestore_v1_Value;
 using model::DocumentKeySet;
 using model::DocumentSet;
 using model::DocumentState;
@@ -551,7 +549,7 @@ TEST(ViewTest, ComputesMutatedKeys) {
   ASSERT_EQ(changes.mutated_keys(), DocumentKeySet{});
 
   MutableDocument doc3 =
-      Doc("rooms/eros/messages/2", 0, Map(), DocumentState::kLocalMutations);
+      Doc("rooms/eros/messages/2", 0, Map()).SetHasLocalMutations();
   changes = view.ComputeDocumentChanges(DocUpdates({doc3}));
   ASSERT_EQ(changes.mutated_keys(), DocumentKeySet{doc3.key()});
 }
@@ -560,7 +558,7 @@ TEST(ViewTest, RemovesKeysFromMutatedKeysWhenNewDocHasNoLocalChanges) {
   Query query = QueryForMessages();
   MutableDocument doc1 = Doc("rooms/eros/messages/0", 0, Map());
   MutableDocument doc2 =
-      Doc("rooms/eros/messages/1", 0, Map(), DocumentState::kLocalMutations);
+      Doc("rooms/eros/messages/1", 0, Map()).SetHasLocalMutations();
   View view(query, DocumentKeySet{});
 
   // Start with a full view.
@@ -579,7 +577,7 @@ TEST(ViewTest, RemembersLocalMutationsFromPreviousSnapshot) {
   Query query = QueryForMessages();
   MutableDocument doc1 = Doc("rooms/eros/messages/0", 0, Map());
   MutableDocument doc2 =
-      Doc("rooms/eros/messages/1", 0, Map(), DocumentState::kLocalMutations);
+      Doc("rooms/eros/messages/1", 0, Map()).SetHasLocalMutations();
   View view(query, DocumentKeySet{});
 
   // Start with a full view.
@@ -599,7 +597,7 @@ TEST(ViewTest,
   Query query = QueryForMessages();
   MutableDocument doc1 = Doc("rooms/eros/messages/0", 0, Map());
   MutableDocument doc2 =
-      Doc("rooms/eros/messages/1", 0, Map(), DocumentState::kLocalMutations);
+      Doc("rooms/eros/messages/1", 0, Map()).SetHasLocalMutations();
   View view(query, DocumentKeySet{});
 
   // Start with a full view.
@@ -615,7 +613,7 @@ TEST(ViewTest,
 TEST(ViewTest, RaisesHasPendingWritesForPendingMutationsInInitialSnapshot) {
   Query query = QueryForMessages();
   MutableDocument doc1 =
-      Doc("rooms/eros/messages/1", 0, Map(), DocumentState::kLocalMutations);
+      Doc("rooms/eros/messages/1", 0, Map()).SetHasLocalMutations();
   View view(query, DocumentKeySet{});
   ViewDocumentChanges changes = view.ComputeDocumentChanges(DocUpdates({doc1}));
   ViewChange view_change = view.ApplyChanges(changes);
@@ -625,8 +623,8 @@ TEST(ViewTest, RaisesHasPendingWritesForPendingMutationsInInitialSnapshot) {
 TEST(ViewTest,
      DoesntRaiseHasPendingWritesForCommittedMutationsInInitialSnapshot) {
   Query query = QueryForMessages();
-  MutableDocument doc1 = Doc("rooms/eros/messages/1", 0, Map(),
-                             DocumentState::kCommittedMutations);
+  MutableDocument doc1 =
+      Doc("rooms/eros/messages/1", 0, Map()).SetHasCommittedMutations();
   View view(query, DocumentKeySet{});
   ViewDocumentChanges changes = view.ComputeDocumentChanges(DocUpdates({doc1}));
   ViewChange view_change = view.ApplyChanges(changes);
@@ -639,18 +637,17 @@ TEST(ViewTest, SuppressesWriteAcknowledgementIfWatchHasNotCaughtUp) {
   // instead wait for Watch to catch up.
 
   Query query = QueryForMessages();
-  MutableDocument doc1 = Doc("rooms/eros/messages/1", 1, Map("time", 1),
-                             DocumentState::kLocalMutations);
+  MutableDocument doc1 =
+      Doc("rooms/eros/messages/1", 1, Map("time", 1)).SetHasLocalMutations();
   MutableDocument doc1_committed =
-      Doc("rooms/eros/messages/1", 2, Map("time", 2),
-          DocumentState::kCommittedMutations);
+      Doc("rooms/eros/messages/1", 2, Map("time", 2))
+          .SetHasCommittedMutations();
   MutableDocument doc1_acknowledged =
       Doc("rooms/eros/messages/1", 2, Map("time", 2));
-  MutableDocument doc2 = Doc("rooms/eros/messages/2", 1, Map("time", 1),
-                             DocumentState::kLocalMutations);
+  MutableDocument doc2 =
+      Doc("rooms/eros/messages/2", 1, Map("time", 1)).SetHasLocalMutations();
   MutableDocument doc2_modified =
-      Doc("rooms/eros/messages/2", 2, Map("time", 3),
-          DocumentState::kLocalMutations);
+      Doc("rooms/eros/messages/2", 2, Map("time", 3)).SetHasLocalMutations();
   MutableDocument doc2_acknowledged =
       Doc("rooms/eros/messages/2", 2, Map("time", 3));
   View view(query, DocumentKeySet{});

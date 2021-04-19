@@ -32,6 +32,11 @@ enum class ComparisonResult;
 
 namespace model {
 
+class DocumentKey;
+class DatabaseId;
+
+// A bit pattern for our canonical NaN value. Exposed here for testing.
+ABSL_CONST_INIT extern const uint64_t kCanonicalNanBits;
 /**
  * The order of types in Firestore. This order is based on the backend's
  * ordering, but modified to support server timestamps.
@@ -89,6 +94,9 @@ google_firestore_v1_Value NaNValue();
 
 /** Returns `true` if `value` is `NaN` in its Protobuf representation. */
 bool IsNaNValue(const google_firestore_v1_Value& value);
+
+google_firestore_v1_Value RefValue(const DatabaseId database_id,
+                                   const DocumentKey document_key);
 
 /** Creates a copy of the contents of the Value proto. */
 google_firestore_v1_Value DeepClone(const google_firestore_v1_Value& source);

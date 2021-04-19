@@ -21,10 +21,13 @@
 #include <memory>
 #include <vector>
 
+#include "Firestore/core/src/model/database_id.h"
+#include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/server_timestamp_util.h"
 #include "Firestore/core/src/nanopb/nanopb_util.h"
 #include "Firestore/core/src/util/comparison.h"
 #include "Firestore/core/src/util/hard_assert.h"
+
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
@@ -35,6 +38,19 @@ namespace firestore {
 namespace model {
 
 using util::ComparisonResult;
+
+// We use a canonical NaN bit pattern that's common for both Objective-C and
+// Java. Specifically:
+//
+//   - sign: 0
+//   - exponent: 11 bits, all 1
+//   - significand: 52 bits, MSB=1, rest=0
+//
+// This matches the Firestore backend which uses Double.doubleToLongBits from
+// the JDK (which is defined to normalize all NaNs to this value). This also
+// happens to be a common value for NAN in C++, but C++ does not require this
+// specific NaN value to be used, so we normalize.
+const uint64_t kCanonicalNanBits = 0x7ff8000000000000ULL;
 
 TypeOrder GetTypeOrder(const google_firestore_v1_Value& value) {
   switch (value.which_value_type) {
@@ -487,6 +503,16 @@ google_firestore_v1_Value NaNValue() {
 bool IsNaNValue(const google_firestore_v1_Value& value) {
   return value.which_value_type == google_firestore_v1_Value_double_value_tag &&
          isnan(value.double_value);
+}
+
+google_firestore_v1_Value RefValue(const model::DatabaseId database_id,
+                                   const model::DocumentKey document_key) {
+  google_firestore_v1_Value result{};
+  result.which_value_type = google_firestore_v1_Value_reference_value_tag;
+  result.string_value = nanopb::MakeBytesArray(util::StringFormat(
+      "projects/%s/databases/%s/documents/%s", database_id.project_id(),
+      database_id.database_id(), document_key.ToString()));
+  return result;
 }
 
 google_firestore_v1_Value DeepClone(const google_firestore_v1_Value& source) {

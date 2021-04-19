@@ -54,13 +54,13 @@ class BundleLoaderTest : public ::testing::Test {
     }
 
     model::DocumentMap ApplyBundledDocuments(
-        const model::DocumentMap& documents,
+        const model::MutableDocumentMap& documents,
         const std::string& bundle_id) override {
       (void)bundle_id;
       for (const auto& entry : documents) {
         parent_.last_documents_ = parent_.last_documents_.insert(entry.first);
       }
-      return MaybeDocumentMap{};
+      return DocumentMap{};
     }
 
     void SaveNamedQuery(const NamedQuery& query,
