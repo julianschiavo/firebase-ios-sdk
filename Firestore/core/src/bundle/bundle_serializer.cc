@@ -794,7 +794,7 @@ BundleDocument BundleSerializer::DecodeDocument(JsonReader& reader,
   auto map_value = DecodeMapValue(reader, document);
 
   return BundleDocument(MutableDocument::FoundDocument(
-      key, update_time, ObjectValue::FromMap(map_value)));
+      key, update_time, ObjectValue::FromMapValue(map_value)));
 }
 
 }  // namespace bundle

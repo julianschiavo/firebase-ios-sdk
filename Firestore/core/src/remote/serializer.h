@@ -216,11 +216,6 @@ class Serializer {
       util::ReadContext* context,
       const google_firestore_v1_ListenResponse& listen_response) const;
 
-  model::ObjectValue DecodeFields(
-      util::ReadContext* context,
-      size_t count,
-      const google_firestore_v1_Document_FieldsEntry* fields) const;
-
   // Public for the sake of tests.
   google_firestore_v1_StructuredQuery_Filter EncodeFilters(
       const core::FilterList& filters) const;

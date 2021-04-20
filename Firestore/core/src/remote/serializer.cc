@@ -323,8 +323,8 @@ MutableDocument Serializer::DecodeFoundDocument(
               "Tried to deserialize a found document from a missing document.");
 
   DocumentKey key = DecodeKey(context, response.found.name);
-  ObjectValue value =
-      DecodeFields(context, response.found.fields_count, response.found.fields);
+  ObjectValue value = ObjectValue::FromFieldsEntry(response.found.fields,
+                                                   response.found.fields_count);
   SnapshotVersion version = DecodeVersion(context, response.found.update_time);
 
   if (version == SnapshotVersion::None()) {
@@ -425,8 +425,8 @@ Mutation Serializer::DecodeMutation(
   switch (mutation.which_operation) {
     case google_firestore_v1_Write_update_tag: {
       DocumentKey key = DecodeKey(context, mutation.update.name);
-      ObjectValue value = DecodeFields(context, mutation.update.fields_count,
-                                       mutation.update.fields);
+      ObjectValue value = ObjectValue::FromFieldsEntry(
+          mutation.update.fields, mutation.update.fields_count);
       if (mutation.has_update_mask) {
         FieldMask mask = DecodeFieldMask(context, mutation.update_mask);
         return PatchMutation(std::move(key), std::move(value), std::move(mask),
@@ -1333,8 +1333,8 @@ WatchTargetChangeState Serializer::DecodeTargetChangeState(
 std::unique_ptr<WatchChange> Serializer::DecodeDocumentChange(
     ReadContext* context,
     const google_firestore_v1_DocumentChange& change) const {
-  ObjectValue value = DecodeFields(context, change.document.fields_count,
-                                   change.document.fields);
+  ObjectValue value = ObjectValue::FromFieldsEntry(
+      change.document.fields, change.document.fields_count);
   DocumentKey key = DecodeKey(context, change.document.name);
 
   HARD_ASSERT(change.document.has_update_time,

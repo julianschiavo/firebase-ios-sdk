@@ -158,8 +158,8 @@ MutableDocument LocalSerializer::DecodeDocument(
     Reader* reader,
     const google_firestore_v1_Document& proto,
     bool has_committed_mutations) const {
-  ObjectValue fields = rpc_serializer_.DecodeFields(
-      reader->context(), proto.fields_count, proto.fields);
+  ObjectValue fields =
+      ObjectValue::FromFieldsEntry(proto.fields, proto.fields_count);
   SnapshotVersion version =
       rpc_serializer_.DecodeVersion(reader->context(), proto.update_time);
 

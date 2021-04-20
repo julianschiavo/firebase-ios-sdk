@@ -170,17 +170,15 @@ using TransformPairs = std::vector<std::pair<std::string, TransformOperation>>;
  * transformation is used as the input to the next. The result of applying all
  * transformations is then compared to the given `expected_data`.
  */
-void TransformBaseDoc(const FieldValue::Map& base_data,
+void TransformBaseDoc(const google_firestore_v1_Value base_data,
                       const TransformPairs& transforms,
-                      const FieldValue::Map& expected_data) {
+                      const google_firestore_v1_Value& expected_data) {
   MutableDocument current_doc = Doc("collection/key", 0, base_data);
 
   for (const auto& transform : transforms) {
     Mutation mutation = PatchMutation("collection/key", Map(), {transform});
-    auto result = mutation.ApplyToLocalView(current_doc, now);
-    ASSERT_NE(result, absl::nullopt);
-    ASSERT_EQ(result->type(), MaybeDocument::Type::Document);
-    current_doc = MutableDocument(*result);
+    mutation.ApplyToLocalView(current_doc, now);
+    ASSERT_TRUE(current_doc.is_found_document());
   }
 
   MutableDocument expected_doc =
@@ -204,25 +202,16 @@ auto Increment(T value) -> decltype(NumericIncrementTransform(Value(value))) {
 
 template <typename... Args>
 TransformOperation ArrayUnion(Args... args) {
-  std::vector<FieldValue> values = {Value(args)...};
+  google_firestore_v1_Value values = Array(args...);
   return ArrayTransform(TransformOperation::Type::ArrayUnion,
-                        std::move(values));
+                        values.array_value);
 }
 
 template <typename... Args>
 TransformOperation ArrayRemove(Args... args) {
-  std::vector<FieldValue> values = {Value(args)...};
+  google_firestore_v1_Value values = Array(args...);
   return ArrayTransform(TransformOperation::Type::ArrayRemove,
-                        std::move(values));
-}
-
-/**
- * Converts the input arguments to a vector of FieldValues wrapping the input
- * types.
- */
-template <typename... Args>
-static std::vector<FieldValue> FieldValueVector(Args... values) {
-  return Array(values...).array_value();
+                        values.array_value);
 }
 
 }  // namespace
@@ -414,12 +403,12 @@ TEST(MutationTest, AppliesServerAckedIncrementTransformToDocuments) {
   Mutation transform =
       SetMutation("collection/key", Map(), {{"sum", Increment(2)}});
 
-  model::MutationResult mutation_result(Version(1), FieldValueVector(3));
+  model::MutationResult mutation_result(Version(1), Array(3).array_value);
 
-  MaybeDocument result = transform.ApplyToRemoteDocument(doc, mutation_result);
+  transform.ApplyToRemoteDocument(doc, mutation_result);
 
-  EXPECT_EQ(result, Doc("collection/key", 1, Map("sum", 3),
-                        DocumentState::kCommittedMutations));
+  EXPECT_EQ(doc,
+            Doc("collection/key", 1, Map("sum", 3)).SetHasCommittedMutations());
 }
 
 TEST(MutationTest, AppliesServerAckedServerTimestampTransformToDocuments) {
@@ -430,15 +419,15 @@ TEST(MutationTest, AppliesServerAckedServerTimestampTransformToDocuments) {
   Mutation transform = PatchMutation("collection/key", Map(),
                                      {{"foo.bar", ServerTimestampTransform()}});
 
-  model::MutationResult mutation_result(Version(1), FieldValueVector(now));
+  model::MutationResult mutation_result(Version(1), Array(now).array_value);
 
-  MaybeDocument result = transform.ApplyToRemoteDocument(doc, mutation_result);
+  transform.ApplyToRemoteDocument(doc, mutation_result);
 
   MutableDocument expected_doc =
-      Doc("collection/key", 1, Map("foo", Map("bar", now), "baz", "baz-value"),
-          DocumentState::kCommittedMutations);
+      Doc("collection/key", 1, Map("foo", Map("bar", now), "baz", "baz-value"))
+          .SetHasCommittedMutations();
 
-  EXPECT_EQ(result, expected_doc);
+  EXPECT_EQ(doc, expected_doc);
 }
 
 TEST(MutationTest, AppliesServerAckedArrayTransformsToDocuments) {
@@ -454,21 +443,22 @@ TEST(MutationTest, AppliesServerAckedArrayTransformsToDocuments) {
 
   // Server just sends null transform results for array operations.
   model::MutationResult mutation_result(Version(1),
-                                        FieldValueVector(nullptr, nullptr));
+                                        Array(nullptr, nullptr).array_value);
 
   transform.ApplyToRemoteDocument(doc, mutation_result);
 
   EXPECT_EQ(doc, Doc("collection/key", 1,
-                     Map("array_1", Array(1, 2, 3), "array_2", Array("b")).SetHasCommittedMutations());
+                     Map("array_1", Array(1, 2, 3), "array_2", Array("b")))
+                     .SetHasCommittedMutations());
 }
 
 TEST(MutationTest, DeleteDeletes) {
   MutableDocument doc = Doc("collection/key", 0, Map("foo", "bar"));
 
   Mutation del = DeleteMutation("collection/key");
-  auto result = del.ApplyToLocalView(doc, now);
+  del.ApplyToLocalView(doc, now);
 
-  EXPECT_EQ(result, DeletedDoc("collection/key", 0));
+  EXPECT_EQ(doc, DeletedDoc("collection/key", 0));
 }
 
 TEST(MutationTest, SetWithMutationResult) {
@@ -477,7 +467,8 @@ TEST(MutationTest, SetWithMutationResult) {
   Mutation set = SetMutation("collection/key", Map("foo", "new-bar"));
   set.ApplyToRemoteDocument(doc, MutationResult(4));
 
-  EXPECT_EQ(doc, Doc("collection/key", 4, Map("foo", "new-bar").SetHasCommittedMutations());
+  EXPECT_EQ(doc, Doc("collection/key", 4, Map("foo", "new-bar"))
+                     .SetHasCommittedMutations());
 }
 
 TEST(MutationTest, PatchWithMutationResult) {
@@ -486,7 +477,8 @@ TEST(MutationTest, PatchWithMutationResult) {
   Mutation patch = PatchMutation("collection/key", Map("foo", "new-bar"));
   patch.ApplyToRemoteDocument(doc, MutationResult(4));
 
-  EXPECT_EQ(doc, Doc("collection/key", 4, Map("foo", "new-bar")).SetHasCommittedMutations());
+  EXPECT_EQ(doc, Doc("collection/key", 4, Map("foo", "new-bar"))
+                     .SetHasCommittedMutations());
 }
 
 TEST(MutationTest, Transitions) {

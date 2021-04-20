@@ -26,6 +26,7 @@ namespace firebase {
 namespace firestore {
 namespace model {
 
+using testutil::DeletedDoc;
 using testutil::Doc;
 using testutil::Field;
 using testutil::Key;
@@ -80,6 +81,7 @@ TEST(DocumentTest, Equality) {
   EXPECT_NE(doc, Doc("some/path", 1, Map("a", 1)).SetHasLocalMutations());
 
   EXPECT_NE(doc, UnknownDoc("same/path", 1));
+  EXPECT_NE(DeletedDoc("same/path", 1), UnknownDoc("same/path", 1));
 }
 
 }  // namespace model

@@ -54,7 +54,9 @@ class ObjectValue {
   ObjectValue(const ObjectValue& other);
   ObjectValue& operator=(const ObjectValue&) = delete;
 
-  static ObjectValue FromMap(google_firestore_v1_MapValue map_value);
+  static ObjectValue FromMapValue(google_firestore_v1_MapValue map_value);
+  static ObjectValue FromFieldsEntry(
+      google_firestore_v1_Document_FieldsEntry* fields_entry, pb_size_t count);
 
   /** Recursively extracts the FieldPaths that are set in this ObjectValue. */
   FieldMask ToFieldMask() const;

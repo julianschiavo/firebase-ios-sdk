@@ -105,6 +105,10 @@ bool operator==(const MutableDocument& lhs, const MutableDocument& rhs) {
          lhs.document_state_ == rhs.document_state_ && lhs.value_ == rhs.value_;
 }
 
+std::ostream& operator<<(std::ostream& os, const MutableDocument& doc) {
+  return os << doc.ToString();
+}
+
 std::ostream& operator<<(std::ostream& os,
                          MutableDocument::DocumentState state) {
   switch (state) {

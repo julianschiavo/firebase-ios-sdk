@@ -177,10 +177,25 @@ ObjectValue::ObjectValue(const ObjectValue& other)
     : value_(DeepClone(*other.value_)) {
 }
 
-ObjectValue ObjectValue::FromMap(google_firestore_v1_MapValue map_value) {
+ObjectValue ObjectValue::FromMapValue(google_firestore_v1_MapValue map_value) {
   google_firestore_v1_Value value{};
   value.which_value_type = google_firestore_v1_Value_map_value_tag;
   value.map_value = map_value;
+  return ObjectValue{value};
+}
+
+ObjectValue ObjectValue::FromFieldsEntry(
+    google_firestore_v1_Document_FieldsEntry* fields_entry, pb_size_t count) {
+  google_firestore_v1_Value value{};
+  value.which_value_type = google_firestore_v1_Value_map_value_tag;
+  value.map_value.fields_count = count;
+  value.map_value.fields =
+      nanopb::MakeArray<google_firestore_v1_MapValue_FieldsEntry>(count);
+  for (pb_size_t i = 0; i < count; ++i) {
+    value.map_value.fields[i].key = fields_entry[i].key;
+    value.map_value.fields[i].value =
+        fields_entry[i].value;  // DO I need to copy?
+  }
   return ObjectValue{value};
 }
 

@@ -222,9 +222,7 @@ class MutableDocument {
 
 bool operator==(const MutableDocument& lhs, const MutableDocument& rhs);
 
-std::ostream& operator<<(std::ostream& os, const MutableDocument& doc) {
-  return os << doc.ToString();
-}
+std::ostream& operator<<(std::ostream& os, const MutableDocument& doc);
 
 inline bool operator!=(const MutableDocument& lhs, const MutableDocument& rhs) {
   return !(lhs == rhs);

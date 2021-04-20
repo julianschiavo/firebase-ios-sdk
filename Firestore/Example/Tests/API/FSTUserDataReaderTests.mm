@@ -168,20 +168,20 @@ union DoubleBits {
 - (void)testConvertsSimpleObjects {
   ObjectValue actual =
       FSTTestObjectValue(@{@"a" : @"foo", @"b" : @(1L), @"c" : @YES, @"d" : [NSNull null]});
-  ObjectValue expected = ObjectValue::FromMap({{"a", FieldValue::FromString("foo")},
-                                               {"b", FieldValue::FromInteger(1)},
-                                               {"c", FieldValue::True()},
-                                               {"d", FieldValue::Null()}});
+  ObjectValue expected = ObjectValue::FromMapValue({{"a", FieldValue::FromString("foo")},
+                                                    {"b", FieldValue::FromInteger(1)},
+                                                    {"c", FieldValue::True()},
+                                                    {"d", FieldValue::Null()}});
   XCTAssertEqual(actual, expected);
   XCTAssertEqual(actual.AsFieldValue().type(), TypeOrder::kObject);
 }
 
 - (void)testConvertsNestedObjects {
   ObjectValue actual = FSTTestObjectValue(@{@"a" : @{@"b" : @{@"c" : @"foo"}, @"d" : @YES}});
-  ObjectValue expected = ObjectValue::FromMap({
-      {"a",
-       ObjectValue::FromMap({{"b", ObjectValue::FromMap({{"c", FieldValue::FromString("foo")}})},
-                             {"d", FieldValue::True()}})},
+  ObjectValue expected = ObjectValue::FromMapValue({
+      {"a", ObjectValue::FromMapValue(
+                {{"b", ObjectValue::FromMapValue({{"c", FieldValue::FromString("foo")}})},
+                 {"d", FieldValue::True()}})},
   });
   XCTAssertEqual(actual, expected);
   XCTAssertEqual(actual.AsFieldValue().type(), TypeOrder::kObject);

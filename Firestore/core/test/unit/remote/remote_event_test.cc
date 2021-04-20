@@ -23,7 +23,6 @@
 
 #include "Firestore/core/src/local/target_data.h"
 #include "Firestore/core/src/model/document_key.h"
-#include "Firestore/core/src/model/no_document.h"
 #include "Firestore/core/src/model/types.h"
 #include "Firestore/core/src/remote/existence_filter.h"
 #include "Firestore/core/src/remote/watch_change.h"
@@ -42,7 +41,6 @@ using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentState;
 using model::MutableDocument;
-using model::NoDocument;
 using model::SnapshotVersion;
 using model::TargetId;
 using nanopb::ByteString;
@@ -69,7 +67,7 @@ std::unique_ptr<DocumentWatchChange> MakeDocChange(
     std::vector<TargetId> updated,
     std::vector<TargetId> removed,
     DocumentKey key,
-    const MaybeDocument& doc) {
+    const MutableDocument& doc) {
   return absl::make_unique<DocumentWatchChange>(
       std::move(updated), std::move(removed), std::move(key), doc);
 }
@@ -620,7 +618,7 @@ TEST_F(RemoteEventTest, DocumentUpdate) {
   target_metadata_provider_.SetSyncedKeys(
       DocumentKeySet{doc1.key(), doc2.key()}, target_map[1]);
 
-  NoDocument deleted_doc1 = DeletedDoc(doc1.key(), 3);
+  MutableDocument deleted_doc1 = DeletedDoc(doc1.key(), 3);
   DocumentWatchChange change3{{}, {1}, deleted_doc1.key(), deleted_doc1};
   aggregator.HandleDocumentChange(change3);
 
@@ -721,8 +719,8 @@ TEST_F(RemoteEventTest, SynthesizeDeletes) {
       3, target_map, no_outstanding_responses_, DocumentKeySet{},
       Changes(std::move(resolve_limbo_target)));
 
-  NoDocument expected(limbo_key, event.snapshot_version(),
-                      /* has_committed_mutations= */ false);
+  MutableDocument expected =
+      MutableDocument::NoDocument(limbo_key, event.snapshot_version());
   ASSERT_EQ(event.document_updates().at(limbo_key), expected);
   ASSERT_TRUE(event.limbo_document_changes().contains(limbo_key));
 }
@@ -763,11 +761,11 @@ TEST_F(RemoteEventTest, SeparatesDocumentUpdates) {
   auto existing_doc_change =
       MakeDocChange({1}, {}, existing_doc.key(), existing_doc);
 
-  NoDocument deleted_doc = DeletedDoc("docs/deleted", 1);
+  MutableDocument deleted_doc = DeletedDoc("docs/deleted", 1);
   auto deleted_doc_change =
       MakeDocChange({}, {1}, deleted_doc.key(), deleted_doc);
 
-  NoDocument missing_doc = DeletedDoc("docs/missing", 1);
+  MutableDocument missing_doc = DeletedDoc("docs/missing", 1);
   auto missing_doc_change =
       MakeDocChange({}, {1}, missing_doc.key(), missing_doc);
 
