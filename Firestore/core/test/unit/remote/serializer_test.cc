@@ -82,6 +82,7 @@ using model::DatabaseId;
 using model::DeleteMutation;
 using model::DocumentKey;
 using model::FieldPath;
+using model::GetTypeOrder;
 using model::MutableDocument;
 using model::Mutation;
 using model::MutationResult;
@@ -747,17 +748,16 @@ TEST_F(SerializerTest, EncodesArray) {
       // Empty Array.
       {},
       // Typical Array.
-      {FieldValue::FromBoolean(true), FieldValue::FromString("foo")},
+      {Value(true), Value("foo")},
       // Nested Array. NB: the protos explicitly state that directly nested
       // arrays are not allowed, however arrays *can* contain a map which
       // contains another array.
-      {FieldValue::FromString("foo"),
+      {Value("foo"),
        FieldValue::FromMap(
            {{"nested array",
-             FieldValue::FromArray(
-                 {FieldValue::FromString("nested array value 1"),
-                  FieldValue::FromString("nested array value 2")})}}),
-       FieldValue::FromString("bar")}};
+             FieldValue::FromArray({Value("nested array value 1"),
+                                    Value("nested array value 2")})}}),
+       Value("bar")}};
 
   for (const std::vector<FieldValue>& array_value : cases) {
     FieldValue model = FieldValue::FromArray(array_value);
@@ -775,26 +775,10 @@ TEST_F(SerializerTest, EncodesEmptyMap) {
 }
 
 TEST_F(SerializerTest, EncodesNestedObjects) {
-  FieldValue model = FieldValue::FromMap({
-      {"b", Value(true)},
-      {"d", Value(std::numeric_limits<double>::max())},
-      {"i", Value(1)},
-      {"n", Value(nullptr)},
-      {"s", Value("foo")},
-      {"a", FieldValue::FromArray(
-                {FieldValue::FromInteger(2), FieldValue::FromString("bar"),
-                 FieldValue::FromMap({{"b", FieldValue::False()}})})},
-      {"o", FieldValue::FromMap({
-                {"d", FieldValue::FromInteger(100)},
-                {"nested", FieldValue::FromMap({
-                               {
-                                   "e",
-                                   FieldValue::FromInteger(
-                                       std::numeric_limits<int64_t>::max()),
-                               },
-                           })},
-            })},
-  });
+  google_firestore_v1_Value model = Map(
+      "b", true, "d", std::numeric_limits<double>::max(), "i", 1, "n",
+      nullptr, "s", "foo", "a", Array(2, "bar", Map("b", false)), "o",
+      Map("d", 100, "nested", Map("e", std::numeric_limits<int64_t>::max())));
 
   v1::Value inner_proto;
   google::protobuf::Map<std::string, v1::Value>* inner_fields =
@@ -877,19 +861,17 @@ TEST_F(SerializerTest, EncodesFieldValuesWithRepeatedEntries) {
   // Decode the bytes into the model
   StringReader reader(bytes);
 
-  auto message = Message<google_firestore_v1_Value>::TryParse(&reader);
-  FieldValue actual_model =
-      serializer.DecodeFieldValue(reader.context(), *message);
+  auto actual_model = Message<google_firestore_v1_Value>::TryParse(&reader);
   EXPECT_OK(reader.status());
 
   // Ensure the decoded model is as expected.
-  FieldValue expected_model = FieldValue::FromInteger(42);
-  EXPECT_EQ(TypeOrder::kInteger, actual_model.type());
-  EXPECT_EQ(expected_model, actual_model);
+  google_firestore_v1_Value expected_model = Value(42);
+  EXPECT_EQ(TypeOrder::kNumber, GetTypeOrder(*actual_model));
+  EXPECT_EQ(expected_model, *actual_model);
 }
 
 TEST_F(SerializerTest, BadNullValue) {
-  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(NullValue()));
+  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(Value(nullptr)));
 
   // Alter the null value from 0 to 1.
   Mutate(&bytes[1], /*expected_initial_value=*/0, /*new_value=*/1);
@@ -899,23 +881,21 @@ TEST_F(SerializerTest, BadNullValue) {
 }
 
 TEST_F(SerializerTest, BadBoolValueInterpretedAsTrue) {
-  std::vector<uint8_t> bytes =
-      MakeVector(EncodeFieldValue(FieldValue::FromBoolean(true)));
+  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(Value(true)));
 
   // Alter the bool value from 1 to 2. (Value values are 0,1)
   Mutate(&bytes[1], /*expected_initial_value=*/1, /*new_value=*/2);
 
   StringReader reader(bytes);
-  auto message = Message<google_firestore_v1_Value>::TryParse(&reader);
-  FieldValue model = serializer.DecodeFieldValue(reader.context(), *message);
+  auto actual_model = Message<google_firestore_v1_Value>::TryParse(&reader);
 
   ASSERT_OK(reader.status());
-  EXPECT_TRUE(model.boolean_value());
+  EXPECT_TRUE(actual_model->boolean_value);
 }
 
 TEST_F(SerializerTest, BadIntegerValue) {
   // Encode 'maxint'. This should result in 9 0xff bytes, followed by a 1.
-  auto max_int = FieldValue::FromInteger(std::numeric_limits<uint64_t>::max());
+  auto max_int = Value(std::numeric_limits<uint64_t>::max());
   std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(max_int));
   ASSERT_EQ(11u, bytes.size());
   for (size_t i = 1; i < bytes.size() - 1; i++) {
@@ -932,8 +912,7 @@ TEST_F(SerializerTest, BadIntegerValue) {
 }
 
 TEST_F(SerializerTest, BadStringValue) {
-  std::vector<uint8_t> bytes =
-      MakeVector(EncodeFieldValue(FieldValue::FromString("a")));
+  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(Value("a")));
 
   // Claim that the string length is 5 instead of 1. (The first two bytes are
   // used by the encoded tag.)
@@ -944,7 +923,7 @@ TEST_F(SerializerTest, BadStringValue) {
 }
 
 TEST_F(SerializerTest, BadTimestampValue_TooLarge) {
-  auto max_ts = FieldValue::FromTimestamp(TimestampInternal::Max());
+  auto max_ts = Value(TimestampInternal::Max());
   std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(max_ts));
 
   // Add some time, which should push us above the maximum allowed timestamp.
@@ -955,7 +934,7 @@ TEST_F(SerializerTest, BadTimestampValue_TooLarge) {
 }
 
 TEST_F(SerializerTest, BadTimestampValue_TooSmall) {
-  auto min_ts = FieldValue::FromTimestamp(TimestampInternal::Min());
+  auto min_ts = Value(TimestampInternal::Min());
   std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(min_ts));
 
   // Remove some time, which should push us below the minimum allowed timestamp.
@@ -971,7 +950,7 @@ TEST_F(SerializerTest, BadFieldValueTagAndNoOtherTagPresent) {
   // assume some sort of default type in this situation, we've decided to fail
   // the deserialization process in this case instead.
 
-  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(NullValue()));
+  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(Value(nullptr)));
 
   // The v1::Value value_type oneof currently has tags up to 18. For this test,
   // we'll pick a tag that's unlikely to be added in the near term but still
@@ -1020,19 +999,17 @@ TEST_F(SerializerTest, BadFieldValueTagWithOtherValidTagsPresent) {
 
   // Decode the bytes into the model
   StringReader reader(bytes);
-  auto message = Message<google_firestore_v1_Value>::TryParse(&reader);
-  FieldValue actual_model =
-      serializer.DecodeFieldValue(reader.context(), *message);
+  auto actual_model = Message<google_firestore_v1_Value>::TryParse(&reader);
   EXPECT_OK(reader.status());
 
   // Ensure the decoded model is as expected.
-  FieldValue expected_model = FieldValue::FromBoolean(true);
-  EXPECT_EQ(TypeOrder::kBoolean, actual_model.type());
-  EXPECT_EQ(expected_model, actual_model);
+  google_firestore_v1_Value expected_model = Value(true);
+  EXPECT_EQ(TypeOrder::kBoolean, GetTypeOrder(*actual_model));
+  EXPECT_EQ(expected_model, *actual_model);
 }
 
 TEST_F(SerializerTest, IncompleteFieldValue) {
-  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(NullValue()));
+  std::vector<uint8_t> bytes = MakeVector(EncodeFieldValue(Value(nullptr)));
   ASSERT_EQ(2u, bytes.size());
 
   // Remove the (null) payload
@@ -1102,7 +1079,7 @@ TEST_F(SerializerTest, BadKey) {
 
 TEST_F(SerializerTest, EncodesEmptyDocument) {
   DocumentKey key = DocumentKey::FromPathString("path/to/the/doc");
-  ObjectValue empty_value = ObjectValue::Empty();
+  ObjectValue empty_value{};
   SnapshotVersion update_time = SnapshotVersion{{1234, 5678}};
 
   v1::BatchGetDocumentsResponse proto;
@@ -1122,13 +1099,8 @@ TEST_F(SerializerTest, EncodesEmptyDocument) {
 
 TEST_F(SerializerTest, EncodesNonEmptyDocument) {
   DocumentKey key = DocumentKey::FromPathString("path/to/the/doc");
-  ObjectValue fields = ObjectValue::FromMapValue({
-      {"foo", FieldValue::FromString("bar")},
-      {"two", FieldValue::FromInteger(2)},
-      {"nested", FieldValue::FromMap({
-                     {"fourty-two", FieldValue::FromInteger(42)},
-                 })},
-  });
+  ObjectValue fields{
+      Map("foo", "bar", "two", 2, "nested", Map("fourty-two", 42))};
   SnapshotVersion update_time = SnapshotVersion{{1234, 5678}};
 
   v1::Value inner_proto;
