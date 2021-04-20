@@ -46,14 +46,13 @@ namespace util = firebase::firestore::util;
 using firebase::firestore::api::SnapshotMetadata;
 using firebase::firestore::core::DocumentViewChange;
 using firebase::firestore::core::ViewSnapshot;
+using firebase::firestore::google_firestore_v1_Value;
 using firebase::firestore::model::DatabaseId;
 using firebase::firestore::model::Document;
-using firebase::firestore::model::MutableDocument;
 using firebase::firestore::model::DocumentComparator;
 using firebase::firestore::model::DocumentKeySet;
 using firebase::firestore::model::DocumentSet;
-using firebase::firestore::model::DocumentState;
-using firebase::firestore::google_firestore_v1_Value;
+using firebase::firestore::model::MutableDocument;
 
 using testutil::Doc;
 using testutil::Query;

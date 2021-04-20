@@ -52,7 +52,6 @@ using auth::User;
 using model::DocumentKey;
 using model::DocumentKeyHash;
 using model::DocumentKeySet;
-using model::DocumentState;
 using model::ListenSequenceNumber;
 using model::MutableDocument;
 using model::Mutation;

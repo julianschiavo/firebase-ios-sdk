@@ -62,7 +62,6 @@ using core::Target;
 using ::google::protobuf::util::MessageDifferencer;
 using model::DatabaseId;
 using model::DocumentKey;
-using model::DocumentState;
 using model::FieldMask;
 using model::FieldPath;
 using model::ListenSequenceNumber;

@@ -53,7 +53,6 @@ using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
 using model::DocumentSet;
-using model::DocumentState;
 using model::MutableDocument;
 using model::SnapshotVersion;
 using model::TargetId;

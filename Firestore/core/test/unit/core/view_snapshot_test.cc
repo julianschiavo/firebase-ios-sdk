@@ -29,7 +29,6 @@ namespace core {
 using model::DocumentComparator;
 using model::DocumentKeySet;
 using model::DocumentSet;
-using model::DocumentState;
 using model::MutableDocument;
 
 using testutil::Doc;

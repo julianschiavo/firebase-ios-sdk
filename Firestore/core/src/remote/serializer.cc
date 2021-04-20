@@ -77,7 +77,6 @@ using model::DatabaseId;
 using model::DeepClone;
 using model::DeleteMutation;
 using model::DocumentKey;
-using model::DocumentState;
 using model::EncodeServerTimestamp;
 using model::FieldMask;
 using model::FieldPath;

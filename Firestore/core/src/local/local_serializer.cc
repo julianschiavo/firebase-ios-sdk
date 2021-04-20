@@ -50,7 +50,6 @@ using bundle::BundleMetadata;
 using bundle::NamedQuery;
 using core::Target;
 using model::DeepClone;
-using model::DocumentState;
 using model::FieldTransform;
 using model::MutableDocument;
 using model::Mutation;

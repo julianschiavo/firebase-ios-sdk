@@ -38,18 +38,18 @@ namespace util = firebase::firestore::util;
 
 using firebase::firestore::core::ParsedSetData;
 using firebase::firestore::core::ParsedUpdateData;
+using firebase::firestore::google_firestore_v1_Value;
 using firebase::firestore::model::DatabaseId;
 using firebase::firestore::model::DeleteMutation;
 using firebase::firestore::model::DocumentKey;
 using firebase::firestore::model::FieldMask;
 using firebase::firestore::model::FieldPath;
-using firebase::firestore::google_firestore_v1_Value;
+using firebase::firestore::model::GetTypeOrder;
 using firebase::firestore::model::ObjectValue;
 using firebase::firestore::model::PatchMutation;
 using firebase::firestore::model::Precondition;
 using firebase::firestore::model::SetMutation;
 using firebase::firestore::model::TypeOrder;
-using firebase::firestore::model::GetTypeOrder;
 
 NS_ASSUME_NONNULL_BEGIN
 

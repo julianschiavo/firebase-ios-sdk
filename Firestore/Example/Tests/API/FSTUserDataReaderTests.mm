@@ -36,24 +36,24 @@ namespace util = firebase::firestore::util;
 namespace nanopb = firebase::firestore::nanopb;
 using firebase::firestore::api::MakeGeoPoint;
 using firebase::firestore::api::MakeTimestamp;
+using firebase::firestore::google_firestore_v1_ArrayValue;
+using firebase::firestore::google_firestore_v1_Value;
 using firebase::firestore::model::ArrayTransform;
 using firebase::firestore::model::DatabaseId;
 using firebase::firestore::model::FieldPath;
-using firebase::firestore::google_firestore_v1_Value;
-using firebase::firestore::google_firestore_v1_ArrayValue;
 using firebase::firestore::model::FieldTransform;
+using firebase::firestore::model::GetTypeOrder;
 using firebase::firestore::model::ObjectValue;
 using firebase::firestore::model::PatchMutation;
-using firebase::firestore::model::TransformOperation;
-using firebase::firestore::model::SetMutation;
-using firebase::firestore::nanopb::MakeNSData;
-using firebase::firestore::testutil::Field;
-using firebase::firestore::testutil::Value;
-using firebase::firestore::model::GetTypeOrder;
-using firebase::firestore::model::TypeOrder;
 using firebase::firestore::model::RefValue;
-using firebase::firestore::testutil::Map;
+using firebase::firestore::model::SetMutation;
+using firebase::firestore::model::TransformOperation;
+using firebase::firestore::model::TypeOrder;
+using firebase::firestore::nanopb::MakeNSData;
 using firebase::firestore::testutil::Array;
+using firebase::firestore::testutil::Field;
+using firebase::firestore::testutil::Map;
+using firebase::firestore::testutil::Value;
 
 @interface FSTUserDataReaderTests : XCTestCase
 @end

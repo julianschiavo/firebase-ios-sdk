@@ -54,8 +54,8 @@ class MutationResult {
       : version_(version), transform_results_{transform_results} {
   }
 
-  MutationResult(MutationResult&& other)
-      : version_{std::move(other.version_)},
+  MutationResult(MutationResult&& other) noexcept
+      : version_{other.version_},
         transform_results_{std::move(other.transform_results_)} {
   }
 

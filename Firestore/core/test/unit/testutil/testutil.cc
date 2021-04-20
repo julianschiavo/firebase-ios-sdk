@@ -54,7 +54,6 @@ using model::Document;
 using model::DocumentComparator;
 using model::DocumentKey;
 using model::DocumentSet;
-using model::DocumentState;
 using model::FieldMask;
 using model::FieldPath;
 using model::FieldTransform;

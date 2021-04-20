@@ -25,7 +25,6 @@ namespace firebase {
 namespace firestore {
 namespace remote {
 
-using model::DocumentState;
 using model::MutableDocument;
 
 using testutil::Doc;

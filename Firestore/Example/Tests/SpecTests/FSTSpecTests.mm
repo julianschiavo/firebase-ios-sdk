@@ -75,22 +75,22 @@
 namespace objc = firebase::firestore::objc;
 namespace testutil = firebase::firestore::testutil;
 namespace util = firebase::firestore::util;
-using firebase::firestore::api::LoadBundleTask;
 using firebase::firestore::Error;
+using firebase::firestore::api::LoadBundleTask;
 using firebase::firestore::auth::User;
 using firebase::firestore::bundle::BundleReader;
 using firebase::firestore::bundle::BundleSerializer;
 using firebase::firestore::core::DocumentViewChange;
 using firebase::firestore::core::Query;
+using firebase::firestore::google_firestore_v1_ArrayValue;
+using firebase::firestore::google_firestore_v1_Value;
 using firebase::firestore::local::Persistence;
-using firebase::firestore::local::TargetData;
 using firebase::firestore::local::QueryPurpose;
+using firebase::firestore::local::TargetData;
+using firebase::firestore::model::Document;
 using firebase::firestore::model::Document;
 using firebase::firestore::model::DocumentKey;
 using firebase::firestore::model::DocumentKeySet;
-using firebase::firestore::model::DocumentState;
-using firebase::firestore::google_firestore_v1_Value;
-using firebase::firestore::model::Document;
 using firebase::firestore::model::MutableDocument;
 using firebase::firestore::model::MutationResult;
 using firebase::firestore::model::ObjectValue;
@@ -99,8 +99,8 @@ using firebase::firestore::model::SnapshotVersion;
 using firebase::firestore::model::TargetId;
 using firebase::firestore::nanopb::ByteString;
 using firebase::firestore::nanopb::MakeByteString;
-using firebase::firestore::remote::ExistenceFilter;
 using firebase::firestore::remote::DocumentWatchChange;
+using firebase::firestore::remote::ExistenceFilter;
 using firebase::firestore::remote::ExistenceFilterWatchChange;
 using firebase::firestore::remote::WatchTargetChange;
 using firebase::firestore::remote::WatchTargetChangeState;
@@ -323,16 +323,16 @@ NSString *ToTargetIdListString(const ActiveTargetMap &map) {
 - (DocumentViewChange)parseChange:(NSDictionary *)jsonDoc ofType:(DocumentViewChange::Type)type {
   NSNumber *version = jsonDoc[@"version"];
   NSDictionary *options = jsonDoc[@"options"];
-  DocumentState documentState = [options[@"hasLocalMutations"] isEqualToNumber:@YES]
-                                    ? DocumentState::kLocalMutations
-                                    : ([options[@"hasCommittedMutations"] isEqualToNumber:@YES]
-                                           ? DocumentState::kCommittedMutations
-                                           : DocumentState::kSynced);
 
   XCTAssert([jsonDoc[@"key"] isKindOfClass:[NSString class]]);
-  FieldValue data = [_reader parsedQueryValue:jsonDoc[@"value"]];
-  Document doc = Doc(util::MakeString((NSString *)jsonDoc[@"key"]), version.longLongValue, data,
-                     documentState);
+  google_firestore_v1_Value data = [_reader parsedQueryValue:jsonDoc[@"value"]];
+  MutableDocument doc =
+      Doc(util::MakeString((NSString *)jsonDoc[@"key"]), version.longLongValue, data);
+  if ([options[@"hasLocalMutations"] isEqualToNumber:@YES]) {
+    doc.SetHasLocalMutations();
+  } else if ([options[@"hasCommittedMutations"] isEqualToNumber:@YES]) {
+    doc.SetHasCommittedMutations();
+  }
   return DocumentViewChange{doc, type};
 }
 
@@ -438,7 +438,7 @@ NSString *ToTargetIdListString(const ActiveTargetMap &map) {
                                             ? absl::optional<ObjectValue>{}
                                             : FSTTestObjectValue(docSpec[@"value"]);
     SnapshotVersion version = [self parseVersion:docSpec[@"version"]];
-    Document doc;
+    MutableDocument doc;
     if (value) {
       doc = MutableDocument::FoundDocument(key, version, *std::move(value));
     } else {
@@ -504,7 +504,8 @@ NSString *ToTargetIdListString(const ActiveTargetMap &map) {
                 @"'keepInQueue=true' is not supported on iOS and should only be set in "
                 @"multi-client tests");
 
-  MutationResult mutationResult(version, absl::nullopt);
+  google_firestore_v1_ArrayValue tansforms{};
+  MutationResult mutationResult(version, tansforms);
   [self.driver receiveWriteAckWithVersion:version mutationResults:{mutationResult}];
 }
 

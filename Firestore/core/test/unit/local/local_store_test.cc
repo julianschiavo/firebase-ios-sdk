@@ -56,7 +56,6 @@ using model::Document;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
-using model::DocumentState;
 using model::ListenSequenceNumber;
 using model::MutableDocument;
 using model::MutableDocumentMap;
@@ -976,8 +975,8 @@ TEST_P(LocalStoreTest, CanExecuteDocumentQueries) {
   core::Query query = Query("foo/bar");
   QueryResult query_result = ExecuteQuery(query);
   ASSERT_EQ(DocMapToVector(query_result.documents()),
-            Vector(std::move(
-                Doc("foo/bar", 0, Map("foo", "bar")).SetHasLocalMutations())));
+            Vector(Document{
+                Doc("foo/bar", 0, Map("foo", "bar")).SetHasLocalMutations()}));
 }
 
 TEST_P(LocalStoreTest, CanExecuteCollectionQueries) {
@@ -991,10 +990,10 @@ TEST_P(LocalStoreTest, CanExecuteCollectionQueries) {
   QueryResult query_result = ExecuteQuery(query);
   ASSERT_EQ(
       DocMapToVector(query_result.documents()),
-      Vector(std::move(
-                 Doc("foo/bar", 0, Map("foo", "bar")).SetHasLocalMutations()),
-             std::move(
-                 Doc("foo/baz", 0, Map("foo", "baz")).SetHasLocalMutations())));
+      Vector(
+          Document{Doc("foo/bar", 0, Map("foo", "bar")).SetHasLocalMutations()},
+          Document{
+              Doc("foo/baz", 0, Map("foo", "baz")).SetHasLocalMutations()}));
 }
 
 TEST_P(LocalStoreTest, CanExecuteMixedCollectionQueries) {
@@ -1013,8 +1012,9 @@ TEST_P(LocalStoreTest, CanExecuteMixedCollectionQueries) {
   ASSERT_EQ(
       DocMapToVector(query_result.documents()),
       Vector(
-          Doc("foo/bar", 20, Map("a", "b")), Doc("foo/baz", 10, Map("a", "b")),
-          std::move(Doc("foo/bonk", 0, Map("a", "b")).SetHasLocalMutations())));
+          Document{Doc("foo/bar", 20, Map("a", "b"))},
+          Document{Doc("foo/baz", 10, Map("a", "b"))},
+          Document{Doc("foo/bonk", 0, Map("a", "b")).SetHasLocalMutations()}));
 }
 
 TEST_P(LocalStoreTest, ReadsAllDocumentsForInitialCollectionQueries) {

@@ -73,7 +73,6 @@ class SnapshotVersion;
 class TransformOperation;
 class VerifyMutation;
 
-enum class DocumentState;
 enum class OnlineState;
 
 struct DocumentKeyHash;

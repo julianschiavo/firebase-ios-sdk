@@ -48,6 +48,7 @@
 namespace util = firebase::firestore::util;
 using firebase::Timestamp;
 using firebase::firestore::GeoPoint;
+using firebase::firestore::google_firestore_v1_Value;
 using firebase::firestore::api::DocumentSnapshot;
 using firebase::firestore::api::Firestore;
 using firebase::firestore::api::MakeFIRGeoPoint;
@@ -57,7 +58,6 @@ using firebase::firestore::model::DatabaseId;
 using firebase::firestore::model::Document;
 using firebase::firestore::model::DocumentKey;
 using firebase::firestore::model::FieldPath;
-using firebase::firestore::google_firestore_v1_Value;
 using firebase::firestore::model::ObjectValue;
 using firebase::firestore::remote::Serializer;
 using firebase::firestore::nanopb::MakeNSData;

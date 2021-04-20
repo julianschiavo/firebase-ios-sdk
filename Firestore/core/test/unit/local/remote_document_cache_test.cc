@@ -39,7 +39,6 @@ namespace {
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
-using model::DocumentState;
 using model::MutableDocument;
 using model::MutableDocumentMap;
 using model::SnapshotVersion;

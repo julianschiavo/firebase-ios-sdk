@@ -50,7 +50,6 @@ using firebase::firestore::model::Document;
 using firebase::firestore::model::DocumentComparator;
 using firebase::firestore::model::DocumentKeySet;
 using firebase::firestore::model::DocumentSet;
-using firebase::firestore::model::DocumentState;
 
 using testutil::Doc;
 using testutil::DocSet;

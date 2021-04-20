@@ -45,7 +45,6 @@ namespace core {
 
 using model::DocumentKeySet;
 using model::DocumentSet;
-using model::DocumentState;
 using model::MutableDocument;
 using model::OnlineState;
 using remote::TargetChange;

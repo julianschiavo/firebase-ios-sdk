@@ -39,7 +39,6 @@ using local::QueryPurpose;
 using local::TargetData;
 using model::DocumentKey;
 using model::DocumentKeySet;
-using model::DocumentState;
 using model::MutableDocument;
 using model::SnapshotVersion;
 using model::TargetId;
