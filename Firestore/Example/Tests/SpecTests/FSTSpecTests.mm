@@ -48,6 +48,7 @@
 #include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/document_key_set.h"
+#include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/patch_mutation.h"
 #include "Firestore/core/src/model/resource_path.h"
 #include "Firestore/core/src/model/set_mutation.h"
@@ -90,8 +91,8 @@ using firebase::firestore::model::DocumentKeySet;
 using firebase::firestore::model::DocumentState;
 using firebase::firestore::google_firestore_v1_Value;
 using firebase::firestore::model::Document;
+using firebase::firestore::model::MutableDocument;
 using firebase::firestore::model::MutationResult;
-using firebase::firestore::model::NoDocument;
 using firebase::firestore::model::ObjectValue;
 using firebase::firestore::model::ResourcePath;
 using firebase::firestore::model::SnapshotVersion;
@@ -295,7 +296,7 @@ NSString *ToTargetIdListString(const ActiveTargetMap &map) {
       for (NSArray<id> *filter in filters) {
         std::string key = util::MakeString(filter[0]);
         std::string op = util::MakeString(filter[1]);
-        FieldValue value = [_reader parsedQueryValue:filter[2]];
+        google_firestore_v1_Value value = [_reader parsedQueryValue:filter[2]];
         query = query.AddingFilter(Filter(key, op, value));
       }
     }
@@ -437,11 +438,11 @@ NSString *ToTargetIdListString(const ActiveTargetMap &map) {
                                             ? absl::optional<ObjectValue>{}
                                             : FSTTestObjectValue(docSpec[@"value"]);
     SnapshotVersion version = [self parseVersion:docSpec[@"version"]];
-    MaybeDocument doc;
+    Document doc;
     if (value) {
-      doc = Document(*std::move(value), key, version, DocumentState::kSynced);
+      doc = MutableDocument::FoundDocument(key, version, *std::move(value));
     } else {
-      doc = NoDocument(key, version, /* has_committed_mutations= */ false);
+      doc = MutableDocument::NoDocument(key, version);
     }
     DocumentWatchChange change{ConvertTargetsArray(watchEntity[@"targets"]),
                                ConvertTargetsArray(watchEntity[@"removedTargets"]), std::move(key),

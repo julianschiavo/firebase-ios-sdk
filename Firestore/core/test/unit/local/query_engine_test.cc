@@ -166,7 +166,7 @@ class QueryEngineTest : public ::testing::Test {
         query, last_limbo_free_snapshot_version, remote_keys);
     View view(query, DocumentKeySet());
     ViewDocumentChanges view_doc_changes =
-        view.ComputeDocumentChanges(docs.underlying_map(), {});
+        view.ComputeDocumentChanges(docs, {});
     return view.ApplyChanges(view_doc_changes).snapshot()->documents();
   }
 

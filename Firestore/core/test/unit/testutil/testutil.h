@@ -30,6 +30,7 @@
 #include "Firestore/core/src/model/document_set.h"
 #include "Firestore/core/src/model/model_fwd.h"
 #include "Firestore/core/src/model/precondition.h"
+#include "Firestore/core/src/nanopb/byte_string.h"
 #include "Firestore/core/src/nanopb/nanopb_util.h"
 #include "absl/strings/string_view.h"
 
@@ -113,6 +114,8 @@ google_firestore_v1_Value Value(Timestamp value);
 google_firestore_v1_Value Value(const char* value);
 
 google_firestore_v1_Value Value(const std::string& value);
+
+google_firestore_v1_Value Value(const nanopb::ByteString& value);
 
 google_firestore_v1_Value Value(const GeoPoint& value);
 
@@ -251,6 +254,9 @@ model::MutableDocument DeletedDoc(model::DocumentKey key, int64_t version = 0);
 
 /** A convenience method for creating unknown docs for tests. */
 model::MutableDocument UnknownDoc(absl::string_view key, int64_t version);
+
+/** A convenience method for creating invalid (missing) docs for tests. */
+model::MutableDocument InvalidDoc(absl::string_view key);
 
 /**
  * Creates a DocumentComparator that will compare Documents by the given

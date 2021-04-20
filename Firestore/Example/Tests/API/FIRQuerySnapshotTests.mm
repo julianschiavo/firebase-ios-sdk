@@ -89,8 +89,8 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)testIncludeMetadataChanges {
-  Document doc1Old = Doc("foo/bar", 1, Map("a", "b"), DocumentState::kLocalMutations);
-  Document doc1New = Doc("foo/bar", 1, Map("a", "b"), DocumentState::kSynced);
+  Document doc1Old = Doc("foo/bar", 1, Map("a", "b")).SetHasLocalMutations();
+  Document doc1New = Doc("foo/bar", 1, Map("a", "b"));
 
   Document doc2Old = Doc("foo/baz", 1, Map("a", "b"));
   Document doc2New = Doc("foo/baz", 1, Map("a", "c"));

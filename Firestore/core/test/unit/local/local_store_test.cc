@@ -87,7 +87,7 @@ using testutil::UnknownDoc;
 using testutil::Value;
 using testutil::Vector;
 
-std::vector<MaybeDocument> DocMapToVector(const MutableDocumentMap& docs) {
+std::vector<MutableDocument> DocMapToVector(const MutableDocumentMap& docs) {
   std::vector<MutableDocument> result;
   for (const auto& kv : docs) {
     result.push_back(kv.second);
@@ -116,7 +116,7 @@ RemoteEvent UpdateRemoteEventWithLimboTargets(
     const std::vector<TargetId>& updated_in_targets,
     const std::vector<TargetId>& removed_from_targets,
     const std::vector<TargetId>& limbo_targets) {
-  HARD_ASSERT(!doc.is_document() || !MutableDocument(doc).has_local_mutations(),
+  HARD_ASSERT(!doc.is_found_document() || !doc.has_local_mutations(),
               "Docs from remote updates shouldn't have local changes.");
   DocumentWatchChange change{updated_in_targets, removed_from_targets,
                              doc.key(), doc};
@@ -168,9 +168,8 @@ RemoteEvent AddedRemoteEvent(const std::vector<MutableDocument>& docs,
 
   SnapshotVersion version;
   for (const MutableDocument& doc : docs) {
-    HARD_ASSERT(
-        !doc.is_document() || !MutableDocument(doc).has_local_mutations(),
-        "Docs from remote updates shouldn't have local changes.");
+    HARD_ASSERT(!doc.is_found_document() || !doc.has_local_mutations(),
+                "Docs from remote updates shouldn't have local changes.");
     DocumentWatchChange change{added_to_targets, {}, doc.key(), doc};
     aggregator.HandleDocumentChange(change);
     version = version > doc.version() ? version : doc.version();
@@ -248,7 +247,8 @@ void LocalStoreTest::UpdateViews(int target_id, bool from_cache) {
 }
 
 void LocalStoreTest::AcknowledgeMutationWithVersion(
-    int64_t document_version, absl::optional<FieldValue> transform_result) {
+    int64_t document_version,
+    absl::optional<google_firestore_v1_Value> transform_result) {
   ASSERT_GT(batches_.size(), 0) << "Missing batch to acknowledge.";
   MutationBatch batch = batches_.front();
   batches_.erase(batches_.begin());
@@ -257,13 +257,14 @@ void LocalStoreTest::AcknowledgeMutationWithVersion(
       << "Acknowledging more than one mutation not supported.";
   SnapshotVersion version = testutil::Version(document_version);
 
-  absl::optional<std::vector<FieldValue>> mutation_transform_result;
+  google_firestore_v1_ArrayValue mutation_transform_result{};
   if (transform_result) {
-    mutation_transform_result = std::vector<FieldValue>{*transform_result};
+    mutation_transform_result = Array(*transform_result).array_value;
   }
 
   MutationResult mutation_result(version, mutation_transform_result);
-  MutationBatchResult result(batch, version, {mutation_result}, {});
+  std::vector<MutationResult> mutation_results{std::move(mutation_result)};
+  MutationBatchResult result(batch, version, std::move(mutation_results), {});
   last_changes_ = local_store_.AcknowledgeBatch(result);
 }
 
@@ -311,7 +312,7 @@ void LocalStoreTest::ResetPersistenceStats() {
 /** Asserts that a the last_changes contain the docs in the given array. */
 #define FSTAssertChanged(...)                               \
   do {                                                      \
-    std::vector<MutableDocument> expected = {__VA_ARGS__};  \
+    std::vector<Document> expected = {__VA_ARGS__};         \
     ASSERT_EQ(last_changes_.size(), expected.size());       \
     auto last_changes_list = DocMapToVector(last_changes_); \
     ASSERT_EQ(last_changes_list, expected);                 \
@@ -322,18 +323,18 @@ void LocalStoreTest::ResetPersistenceStats() {
  * Asserts that the last ExecuteQuery results contain the docs in the given
  * array.
  */
-#define FSTAssertQueryReturned(...)                                          \
-  do {                                                                       \
-    std::vector<std::string> expected_keys = {__VA_ARGS__};                  \
-    ASSERT_EQ(last_query_result_.documents().size(), expected_keys.size());  \
-    auto expected_keys_iterator = expected_keys.begin();                     \
-    for (const auto& kv : last_query_result_.documents().underlying_map()) { \
-      const DocumentKey& actual_key = kv.first;                              \
-      DocumentKey expected_key = Key(*expected_keys_iterator);               \
-      ASSERT_EQ(actual_key, expected_key);                                   \
-      ++expected_keys_iterator;                                              \
-    }                                                                        \
-    last_query_result_ = QueryResult{};                                      \
+#define FSTAssertQueryReturned(...)                                         \
+  do {                                                                      \
+    std::vector<std::string> expected_keys = {__VA_ARGS__};                 \
+    ASSERT_EQ(last_query_result_.documents().size(), expected_keys.size()); \
+    auto expected_keys_iterator = expected_keys.begin();                    \
+    for (const auto& kv : last_query_result_.documents()) {                 \
+      const DocumentKey& actual_key = kv.first;                             \
+      DocumentKey expected_key = Key(*expected_keys_iterator);              \
+      ASSERT_EQ(actual_key, expected_key);                                  \
+      ++expected_keys_iterator;                                             \
+    }                                                                       \
+    last_query_result_ = QueryResult{};                                     \
   } while (0)
 
 /** Asserts that the given keys were removed. */
@@ -354,20 +355,19 @@ void LocalStoreTest::ResetPersistenceStats() {
   } while (0)
 
 /** Asserts that the given local store contains the given document. */
-#define FSTAssertContains(document)                \
-  do {                                             \
-    MutableDocument expected = (document);         \
-    absl::optional<Document> actual =              \
-        local_store_.ReadDocument(expected.key()); \
-    ASSERT_EQ(*actual, expected);                  \
+#define FSTAssertContains(document)                              \
+  do {                                                           \
+    MutableDocument expected = (document);                       \
+    Document actual = local_store_.ReadDocument(expected.key()); \
+    ASSERT_EQ(actual, expected);                                 \
   } while (0)
 
 /** Asserts that the given local store does not contain the given document. */
-#define FSTAssertNotContains(key_path_string)                         \
-  do {                                                                \
-    DocumentKey key = Key(key_path_string);                           \
-    absl::optional<Document> actual = local_store_.ReadDocument(key); \
-    ASSERT_EQ(*actual, absl::nullopt);                                \
+#define FSTAssertNotContains(key_path_string)         \
+  do {                                                \
+    DocumentKey key = Key(key_path_string);           \
+    Document actual = local_store_.ReadDocument(key); \
+    ASSERT_TRUE(actual->is_unknown_document());       \
   } while (0)
 
 /**
@@ -497,7 +497,7 @@ TEST_P(LocalStoreTest, HandlesDeletedDocumentThenSetMutationThenAck) {
   // Under eager GC, there is no longer a reference for the document, and it
   // should be deleted.
   if (!IsGcEager()) {
-    FSTAssertContains(DeletedDoc("foo/bar", 2, false));
+    FSTAssertContains(DeletedDoc("foo/bar", 2));
   } else {
     FSTAssertNotContains("foo/bar");
   }
@@ -807,8 +807,7 @@ TEST_P(LocalStoreTest, HandlesDeleteMutationThenPatchMutationThenAckThenAck) {
 
   AcknowledgeMutationWithVersion(2);  // delete mutation
   FSTAssertRemoved("foo/bar");
-  FSTAssertContains(
-      DeletedDoc("foo/bar", 2, /* has_committed_mutations= */ true));
+  FSTAssertContains(DeletedDoc("foo/bar", 2).SetHasCommittedMutations());
 
   AcknowledgeMutationWithVersion(3);  // patch mutation
   FSTAssertChanged(UnknownDoc("foo/bar", 3));
@@ -976,9 +975,9 @@ TEST_P(LocalStoreTest, CanExecuteDocumentQueries) {
        testutil::SetMutation("foo/bar/Foo/Bar", Map("Foo", "Bar"))});
   core::Query query = Query("foo/bar");
   QueryResult query_result = ExecuteQuery(query);
-  ASSERT_EQ(
-      DocMapToVector(query_result.documents()),
-      Vector(Doc("foo/bar", 0, Map("foo", "bar")).SetHasLocalMutations()));
+  ASSERT_EQ(DocMapToVector(query_result.documents()),
+            Vector(std::move(
+                Doc("foo/bar", 0, Map("foo", "bar")).SetHasLocalMutations())));
 }
 
 TEST_P(LocalStoreTest, CanExecuteCollectionQueries) {
@@ -992,8 +991,10 @@ TEST_P(LocalStoreTest, CanExecuteCollectionQueries) {
   QueryResult query_result = ExecuteQuery(query);
   ASSERT_EQ(
       DocMapToVector(query_result.documents()),
-      Vector(Doc("foo/bar", 0, Map("foo", "bar")).SetHasLocalMutations(),
-             Doc("foo/baz", 0, Map("foo", "baz")).SetHasLocalMutations()));
+      Vector(std::move(
+                 Doc("foo/bar", 0, Map("foo", "bar")).SetHasLocalMutations()),
+             std::move(
+                 Doc("foo/baz", 0, Map("foo", "baz")).SetHasLocalMutations())));
 }
 
 TEST_P(LocalStoreTest, CanExecuteMixedCollectionQueries) {
@@ -1009,10 +1010,11 @@ TEST_P(LocalStoreTest, CanExecuteMixedCollectionQueries) {
   local_store_.WriteLocally({testutil::SetMutation("foo/bonk", Map("a", "b"))});
 
   QueryResult query_result = ExecuteQuery(query);
-  ASSERT_EQ(DocMapToVector(query_result.documents()),
-            Vector(Doc("foo/bar", 20, Map("a", "b")),
-                   Doc("foo/baz", 10, Map("a", "b")),
-                   Doc("foo/bonk", 0, Map("a", "b")).SetHasLocalMutations()));
+  ASSERT_EQ(
+      DocMapToVector(query_result.documents()),
+      Vector(
+          Doc("foo/bar", 20, Map("a", "b")), Doc("foo/baz", 10, Map("a", "b")),
+          std::move(Doc("foo/bonk", 0, Map("a", "b")).SetHasLocalMutations())));
 }
 
 TEST_P(LocalStoreTest, ReadsAllDocumentsForInitialCollectionQueries) {

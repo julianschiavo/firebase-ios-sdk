@@ -217,8 +217,7 @@ DocumentKey LruGarbageCollectorTest::NextTestDocKey() {
 MutableDocument LruGarbageCollectorTest::NextTestDocumentWithValue(
     ObjectValue value) {
   DocumentKey key = NextTestDocKey();
-  return MutableDocument(std::move(value), std::move(key), Version(2),
-                         DocumentState::kSynced);
+  return MutableDocument::FoundDocument(key, Version(2), std::move(value));
 }
 
 MutableDocument LruGarbageCollectorTest::NextTestDocument() {
@@ -465,11 +464,11 @@ TEST_P(LruGarbageCollectorTest, RemoveOrphanedDocuments) {
   ASSERT_EQ(to_be_removed.size(), removed);
   persistence_->Run("verify", [&] {
     for (const DocumentKey& key : to_be_removed) {
-      ASSERT_EQ(document_cache_->Get(key), absl::nullopt);
+      ASSERT_TRUE(document_cache_->Get(key).is_unknown_document());
       ASSERT_FALSE(target_cache_->Contains(key));
     }
     for (const DocumentKey& key : expected_retained) {
-      ASSERT_NE(document_cache_->Get(key), absl::nullopt)
+      ASSERT_FALSE(document_cache_->Get(key).is_unknown_document())
           << "Missing document " << key.ToString().c_str();
     }
   });
@@ -628,8 +627,8 @@ TEST_P(LruGarbageCollectorTest, RemoveTargetsThenGC) {
   // Update a doc in the middle target
   persistence_->Run("Update a doc in the middle target", [&] {
     int64_t version = 3;
-    MutableDocument doc(ObjectValue(test_value_), middle_doc_to_update,
-                        Version(version), DocumentState::kSynced);
+    MutableDocument doc = MutableDocument::FoundDocument(
+        middle_doc_to_update, Version(version), ObjectValue(test_value_));
     document_cache_->Add(doc, doc.version());
     UpdateTargetInTransaction(middle_target);
   });
@@ -657,7 +656,7 @@ TEST_P(LruGarbageCollectorTest, RemoveTargetsThenGC) {
   ASSERT_EQ(expected_removed.size(), docs_removed);
   persistence_->Run("verify results", [&] {
     for (const DocumentKey& key : expected_removed) {
-      ASSERT_EQ(document_cache_->Get(key), absl::nullopt)
+      ASSERT_TRUE(document_cache_->Get(key).is_unknown_document())
           << "Did not expect to find " << key.ToString().c_str()
           << "in document cache";
       ASSERT_FALSE(target_cache_->Contains(key))
@@ -666,7 +665,7 @@ TEST_P(LruGarbageCollectorTest, RemoveTargetsThenGC) {
       ExpectSentinelRemoved(key);
     }
     for (const DocumentKey& key : expected_retained) {
-      ASSERT_NE(document_cache_->Get(key), absl::nullopt)
+      ASSERT_FALSE(document_cache_->Get(key).is_unknown_document())
           << "Expected to find " << key.ToString().c_str()
           << " in document cache";
     }

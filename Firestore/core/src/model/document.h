@@ -53,7 +53,7 @@ class Document {
   MutableDocument document_;
 };
 
-bool operator==(const Document& lhs, const Document& rhs) {
+inline bool operator==(const Document& lhs, const Document& rhs) {
   return lhs.get() == rhs.get();
 }
 

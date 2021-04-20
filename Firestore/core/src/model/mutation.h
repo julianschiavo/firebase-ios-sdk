@@ -54,6 +54,11 @@ class MutationResult {
       : version_(version), transform_results_{transform_results} {
   }
 
+  MutationResult(MutationResult&& other)
+      : version_{std::move(other.version_)},
+        transform_results_{std::move(other.transform_results_)} {
+  }
+
   /**
    * The version at which the mutation was committed.
    *

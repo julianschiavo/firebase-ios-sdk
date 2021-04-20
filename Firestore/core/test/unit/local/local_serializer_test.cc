@@ -29,18 +29,14 @@
 #include "Firestore/core/src/local/target_data.h"
 #include "Firestore/core/src/model/delete_mutation.h"
 #include "Firestore/core/src/model/field_mask.h"
-#include "Firestore/core/src/model/field_value.h"
-#include "Firestore/core/src/model/maybe_document.h"
 #include "Firestore/core/src/model/mutable_document.h"
 #include "Firestore/core/src/model/mutation.h"
 #include "Firestore/core/src/model/mutation_batch.h"
-#include "Firestore/core/src/model/no_document.h"
 #include "Firestore/core/src/model/patch_mutation.h"
 #include "Firestore/core/src/model/precondition.h"
 #include "Firestore/core/src/model/set_mutation.h"
 #include "Firestore/core/src/model/snapshot_version.h"
 #include "Firestore/core/src/model/types.h"
-#include "Firestore/core/src/model/unknown_document.h"
 #include "Firestore/core/src/nanopb/message.h"
 #include "Firestore/core/src/nanopb/nanopb_util.h"
 #include "Firestore/core/src/nanopb/reader.h"
@@ -59,7 +55,6 @@ namespace local {
 namespace {
 
 namespace v1 = google::firestore::v1;
-using google_firestore_v1_Value;
 using bundle::BundledQuery;
 using bundle::NamedQuery;
 using core::Query;
@@ -74,14 +69,12 @@ using model::ListenSequenceNumber;
 using model::MutableDocument;
 using model::Mutation;
 using model::MutationBatch;
-using model::NoDocument;
 using model::ObjectValue;
 using model::PatchMutation;
 using model::Precondition;
 using model::SetMutation;
 using model::SnapshotVersion;
 using model::TargetId;
-using model::UnknownDocument;
 using nanopb::ByteString;
 using nanopb::ByteStringWriter;
 using nanopb::FreeNanopbMessage;
@@ -248,31 +241,27 @@ class LocalSerializerTest : public ::testing::Test {
 
  private:
   void ExpectSerializationRoundTrip(
-      const MaybeDocument& model,
-      const ::firestore::client::MaybeDocument& proto,
-      MaybeDocument::Type type) {
-    EXPECT_EQ(type, model.type());
+      const MutableDocument& model,
+      const ::firestore::client::MaybeDocument& proto) {
     ByteString bytes = EncodeMaybeDocument(&serializer, model);
     auto actual = ProtobufParse<::firestore::client::MaybeDocument>(bytes);
     EXPECT_TRUE(msg_diff.Compare(proto, actual)) << message_differences;
   }
 
   void ExpectDeserializationRoundTrip(
-      const MaybeDocument& model,
-      const ::firestore::client::MaybeDocument& proto,
-      MaybeDocument::Type type) {
+      const MutableDocument& model,
+      const ::firestore::client::MaybeDocument& proto) {
     ByteString bytes = ProtobufSerialize(proto);
     StringReader reader(bytes);
     auto message = Message<firestore_client_MaybeDocument>::TryParse(&reader);
     auto actual_model = serializer.DecodeMaybeDocument(&reader, *message);
     EXPECT_OK(reader.status());
-    EXPECT_EQ(type, actual_model.type());
     EXPECT_EQ(model, actual_model);
   }
 
   ByteString EncodeMaybeDocument(local::LocalSerializer* localSerializer,
-                                 const MaybeDocument& maybe_doc) {
-    return MakeByteString(localSerializer->EncodeMaybeDocument(maybe_doc));
+                                 const MutableDocument& document) {
+    return MakeByteString(localSerializer->EncodeMaybeDocument(document));
   }
 
   void ExpectSerializationRoundTrip(const TargetData& target_data,
@@ -509,18 +498,18 @@ TEST_F(LocalSerializerTest, EncodesDocumentAsMaybeDocument) {
   maybe_doc_proto.mutable_document()->mutable_update_time()->set_seconds(0);
   maybe_doc_proto.mutable_document()->mutable_update_time()->set_nanos(42000);
 
-  ExpectRoundTrip(doc, maybe_doc_proto, doc.type());
+  ExpectRoundTrip(doc, maybe_doc_proto);
 
   // Verify has_committed_mutations
-  doc = Doc("some/path", /*version=*/42, Map("foo", "bar"),
-            DocumentState::kCommittedMutations);
+  doc = Doc("some/path", /*version=*/42, Map("foo", "bar"))
+            .SetHasCommittedMutations();
   maybe_doc_proto.set_has_committed_mutations(true);
 
-  ExpectRoundTrip(doc, maybe_doc_proto, doc.type());
+  ExpectRoundTrip(doc, maybe_doc_proto);
 }
 
 TEST_F(LocalSerializerTest, EncodesNoDocumentAsMaybeDocument) {
-  NoDocument no_doc = DeletedDoc("some/path", /*version=*/42);
+  MutableDocument no_doc = DeletedDoc("some/path", /*version=*/42);
 
   ::firestore::client::MaybeDocument maybe_doc_proto;
   maybe_doc_proto.mutable_no_document()->set_name(
@@ -528,18 +517,17 @@ TEST_F(LocalSerializerTest, EncodesNoDocumentAsMaybeDocument) {
   maybe_doc_proto.mutable_no_document()->mutable_read_time()->set_seconds(0);
   maybe_doc_proto.mutable_no_document()->mutable_read_time()->set_nanos(42000);
 
-  ExpectRoundTrip(no_doc, maybe_doc_proto, no_doc.type());
+  ExpectRoundTrip(no_doc, maybe_doc_proto);
 
   // Verify has_committed_mutations
-  no_doc =
-      DeletedDoc("some/path", /*version=*/42, /*has_committed_mutations=*/true);
+  no_doc = DeletedDoc("some/path", /*version=*/42).SetHasCommittedMutations();
   maybe_doc_proto.set_has_committed_mutations(true);
 
-  ExpectRoundTrip(no_doc, maybe_doc_proto, no_doc.type());
+  ExpectRoundTrip(no_doc, maybe_doc_proto);
 }
 
 TEST_F(LocalSerializerTest, EncodesUnknownDocumentAsMaybeDocument) {
-  UnknownDocument unknown_doc = UnknownDoc("some/path", /*version=*/42);
+  MutableDocument unknown_doc = UnknownDoc("some/path", /*version=*/42);
 
   ::firestore::client::MaybeDocument maybe_doc_proto;
   maybe_doc_proto.mutable_unknown_document()->set_name(
@@ -549,7 +537,7 @@ TEST_F(LocalSerializerTest, EncodesUnknownDocumentAsMaybeDocument) {
       42000);
   maybe_doc_proto.set_has_committed_mutations(true);
 
-  ExpectRoundTrip(unknown_doc, maybe_doc_proto, unknown_doc.type());
+  ExpectRoundTrip(unknown_doc, maybe_doc_proto);
 }
 
 TEST_F(LocalSerializerTest, EncodesTargetData) {

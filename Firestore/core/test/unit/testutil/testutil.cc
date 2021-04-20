@@ -28,6 +28,7 @@
 #include "Firestore/core/src/core/query.h"
 #include "Firestore/core/src/model/delete_mutation.h"
 #include "Firestore/core/src/model/document.h"
+#include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/document_set.h"
 #include "Firestore/core/src/model/field_mask.h"
 #include "Firestore/core/src/model/field_path.h"
@@ -42,6 +43,7 @@
 #include "Firestore/core/src/nanopb/byte_string.h"
 #include "Firestore/core/src/util/hard_assert.h"
 #include "Firestore/core/src/util/statusor.h"
+#include "Firestore/core/src/util/string_format.h"
 #include "absl/memory/memory.h"
 
 namespace firebase {
@@ -50,6 +52,7 @@ namespace testutil {
 
 using model::Document;
 using model::DocumentComparator;
+using model::DocumentKey;
 using model::DocumentSet;
 using model::DocumentState;
 using model::FieldMask;
@@ -118,6 +121,13 @@ google_firestore_v1_Value Value(const std::string& value) {
   return result;
 }
 
+google_firestore_v1_Value Value(const nanopb::ByteString& value) {
+  google_firestore_v1_Value result{};
+  result.which_value_type = google_firestore_v1_Value_bytes_value_tag;
+  result.bytes_value = nanopb::MakeBytesArray(value.begin(), value.size());
+  return result;
+}
+
 google_firestore_v1_Value Value(const GeoPoint& value) {
   google_firestore_v1_Value result{};
   result.which_value_type = google_firestore_v1_Value_geo_point_value_tag;
@@ -132,6 +142,11 @@ google_firestore_v1_Value Value(const google_firestore_v1_Value& value) {
 
 google_firestore_v1_Value Value(const model::ObjectValue& value) {
   return value.Get();
+}
+
+/** Wraps an immutable sorted map into an ObjectValue. */
+ObjectValue WrapObject(const google_firestore_v1_Value& value) {
+  return ObjectValue{value};
 }
 
 model::DocumentKey Key(absl::string_view path) {
@@ -191,8 +206,16 @@ model::MutableDocument DeletedDoc(absl::string_view key, int64_t version) {
   return MutableDocument::NoDocument(Key(key), Version(version));
 }
 
+model::MutableDocument DeletedDoc(DocumentKey key, int64_t version) {
+  return MutableDocument::NoDocument(key, Version(version));
+}
+
 model::MutableDocument UnknownDoc(absl::string_view key, int64_t version) {
   return MutableDocument::UnknownDocument(Key(key), Version(version));
+}
+
+model::MutableDocument InvalidDoc(absl::string_view key) {
+  return MutableDocument::InvalidDocument(Key(key));
 }
 
 DocumentComparator DocComparator(absl::string_view field_path) {

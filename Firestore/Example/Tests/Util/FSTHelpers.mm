@@ -29,6 +29,7 @@
 #include "Firestore/core/src/model/patch_mutation.h"
 #include "Firestore/core/src/model/resource_path.h"
 #include "Firestore/core/src/model/set_mutation.h"
+#include "Firestore/core/src/model/value_util.h"
 
 #import "Firestore/core/test/unit/testutil/testutil.h"
 
@@ -47,6 +48,8 @@ using firebase::firestore::model::ObjectValue;
 using firebase::firestore::model::PatchMutation;
 using firebase::firestore::model::Precondition;
 using firebase::firestore::model::SetMutation;
+using firebase::firestore::model::TypeOrder;
+using firebase::firestore::model::GetTypeOrder;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -103,7 +106,7 @@ FSTUserDataReader *FSTTestUserDataReader() {
   return reader;
 }
 
-FieldValue FSTTestFieldValue(id _Nullable value) {
+google_firestore_v1_Value FSTTestFieldValue(id _Nullable value) {
   FSTUserDataReader *reader = FSTTestUserDataReader();
   // HACK: We use parsedQueryValue: since it accepts scalars as well as arrays / objects, and
   // our tests currently use FSTTestFieldValue() pretty generically so we don't know the intent.
@@ -111,9 +114,9 @@ FieldValue FSTTestFieldValue(id _Nullable value) {
 }
 
 ObjectValue FSTTestObjectValue(NSDictionary<NSString *, id> *data) {
-  FieldValue wrapped = FSTTestFieldValue(data);
-  HARD_ASSERT(wrapped.type() == TypeOrder::kObject, "Unsupported value: %s", data);
-  return ObjectValue(std::move(wrapped));
+  google_firestore_v1_Value wrapped = FSTTestFieldValue(data);
+  HARD_ASSERT(GetTypeOrder(wrapped) == TypeOrder::kMap, "Unsupported value: %s", data);
+  return ObjectValue(wrapped);
 }
 
 DocumentKey FSTTestDocKey(NSString *path) {

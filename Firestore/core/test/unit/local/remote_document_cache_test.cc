@@ -25,8 +25,6 @@
 #include "Firestore/core/src/local/remote_document_cache.h"
 #include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/document_key_set.h"
-#include "Firestore/core/src/model/document_map.h"
-#include "Firestore/core/src/model/no_document.h"
 #include "Firestore/core/src/util/string_apple.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
 #include "absl/strings/string_view.h"
@@ -38,14 +36,12 @@ namespace firestore {
 namespace local {
 namespace {
 
-using google_firestore_v1_Value;
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
 using model::DocumentState;
 using model::MutableDocument;
-using model::NoDocument;
-using model::OptionalMaybeDocumentMap;
+using model::MutableDocumentMap;
 using model::SnapshotVersion;
 
 using testing::IsSupersetOf;
@@ -60,7 +56,7 @@ using testutil::Version;
 const char* kDocPath = "a/b";
 const char* kLongDocPath = "a/b/c/d/e/f";
 const int kVersion = 42;
-FieldValue::Map kDocData;
+google_firestore_v1_Value kDocData;
 
 /**
  * Extracts all the actual MaybeDocument instances from the given document map.
@@ -69,10 +65,10 @@ FieldValue::Map kDocData;
  *     MaybeDocumentMap.
  */
 template <typename MapType>
-std::vector<MaybeDocument> ExtractDocuments(const MapType& docs) {
-  std::vector<MaybeDocument> result;
+std::vector<MutableDocument> ExtractDocuments(const MapType& docs) {
+  std::vector<MutableDocument> result;
   for (const auto& kv : docs) {
-    const absl::optional<MaybeDocument>& doc = kv.second;
+    const absl::optional<MutableDocument>& doc = kv.second;
     if (doc) {
       result.push_back(*doc);
     }
@@ -83,14 +79,14 @@ std::vector<MaybeDocument> ExtractDocuments(const MapType& docs) {
 MATCHER_P(HasExactlyDocs,
           expected,
           negation ? "missing docs" : "has exactly docs") {
-  std::vector<MaybeDocument> arg_docs = ExtractDocuments(arg);
+  std::vector<MutableDocument> arg_docs = ExtractDocuments(arg);
   return testing::Value(arg_docs, UnorderedElementsAreArray(expected));
 }
 
 MATCHER_P(HasAtLeastDocs,
           expected,
           negation ? "missing docs" : "has at least docs") {
-  std::vector<MaybeDocument> arg_docs = ExtractDocuments(arg);
+  std::vector<MutableDocument> arg_docs = ExtractDocuments(arg);
   return testing::Value(arg_docs, IsSupersetOf(expected));
 }
 
@@ -105,7 +101,7 @@ RemoteDocumentCacheTest::RemoteDocumentCacheTest()
 
 TEST_P(RemoteDocumentCacheTest, ReadDocumentNotInCache) {
   persistence_->Run("test_read_document_not_in_cache", [&] {
-    ASSERT_EQ(absl::nullopt, cache_->Get(testutil::Key(kDocPath)));
+    ASSERT_TRUE(cache_->Get(testutil::Key(kDocPath)).is_unknown_document());
   });
 }
 
@@ -119,7 +115,7 @@ TEST_P(RemoteDocumentCacheTest, SetAndReadSeveralDocuments) {
         SetTestDocument(kDocPath),
         SetTestDocument(kLongDocPath),
     };
-    OptionalMaybeDocumentMap read = cache_->GetAll(
+    MutableDocumentMap read = cache_->GetAll(
         DocumentKeySet{testutil::Key(kDocPath), testutil::Key(kLongDocPath)});
     EXPECT_THAT(read, HasExactlyDocs(written));
   });
@@ -133,7 +129,7 @@ TEST_P(RemoteDocumentCacheTest,
             SetTestDocument(kDocPath),
             SetTestDocument(kLongDocPath),
         };
-        OptionalMaybeDocumentMap read = cache_->GetAll(DocumentKeySet{
+        MutableDocumentMap read = cache_->GetAll(DocumentKeySet{
             testutil::Key(kDocPath),
             testutil::Key(kLongDocPath),
             testutil::Key("foo/nonexistent"),
@@ -141,7 +137,7 @@ TEST_P(RemoteDocumentCacheTest,
         EXPECT_THAT(read, HasAtLeastDocs(written));
         auto found = read.find(DocumentKey::FromPathString("foo/nonexistent"));
         ASSERT_TRUE(found != read.end());
-        ASSERT_EQ(absl::nullopt, found->second);
+        ASSERT_TRUE(found->second.is_unknown_document());
       });
 }
 
@@ -151,7 +147,8 @@ TEST_P(RemoteDocumentCacheTest, SetAndReadADocumentAtDeepPath) {
 
 TEST_P(RemoteDocumentCacheTest, SetAndReadDeletedDocument) {
   persistence_->Run("test_set_and_read_deleted_document", [&] {
-    absl::optional<MaybeDocument> deleted_doc = DeletedDoc(kDocPath, kVersion);
+    absl::optional<MutableDocument> deleted_doc =
+        DeletedDoc(kDocPath, kVersion);
     cache_->Add(*deleted_doc, deleted_doc->version());
 
     ASSERT_EQ(cache_->Get(testutil::Key(kDocPath)), deleted_doc);
@@ -161,7 +158,7 @@ TEST_P(RemoteDocumentCacheTest, SetAndReadDeletedDocument) {
 TEST_P(RemoteDocumentCacheTest, SetDocumentToNewValue) {
   persistence_->Run("test_set_document_to_new_value", [&] {
     SetTestDocument(kDocPath);
-    absl::optional<MaybeDocument> new_doc =
+    absl::optional<MutableDocument> new_doc =
         Doc(kDocPath, kVersion, Map("data", 2));
     cache_->Add(*new_doc, new_doc->version());
     ASSERT_EQ(cache_->Get(testutil::Key(kDocPath)), new_doc);
@@ -173,7 +170,7 @@ TEST_P(RemoteDocumentCacheTest, RemoveDocument) {
     SetTestDocument(kDocPath);
     cache_->Remove(testutil::Key(kDocPath));
 
-    ASSERT_EQ(cache_->Get(testutil::Key(kDocPath)), absl::nullopt);
+    ASSERT_TRUE(cache_->Get(testutil::Key(kDocPath)).is_unknown_document());
   });
 }
 
@@ -197,12 +194,13 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingQuery) {
     SetTestDocument("c/1");
 
     core::Query query = Query("b");
-    DocumentMap results = cache_->GetMatching(query, SnapshotVersion::None());
+    MutableDocumentMap results =
+        cache_->GetMatching(query, SnapshotVersion::None());
     std::vector<MutableDocument> docs = {
         Doc("b/1", kVersion, kDocData),
         Doc("b/2", kVersion, kDocData),
     };
-    EXPECT_THAT(results.underlying_map(), HasExactlyDocs(docs));
+    EXPECT_THAT(results, HasExactlyDocs(docs));
   });
 }
 
@@ -213,11 +211,11 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingQuerySinceReadTime) {
     SetTestDocument("b/new", /* updateTime= */ 3, /* readTime= = */ 13);
 
     core::Query query = Query("b");
-    DocumentMap results = cache_->GetMatching(query, Version(12));
+    MutableDocumentMap results = cache_->GetMatching(query, Version(12));
     std::vector<MutableDocument> docs = {
         Doc("b/new", 3, kDocData),
     };
-    EXPECT_THAT(results.underlying_map(), HasExactlyDocs(docs));
+    EXPECT_THAT(results, HasExactlyDocs(docs));
   });
 }
 
@@ -228,11 +226,11 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingUsesReadTimeNotUpdateTime) {
         SetTestDocument("b/new", /* updateTime= */ 2, /* readTime= */ 1);
 
         core::Query query = Query("b");
-        DocumentMap results = cache_->GetMatching(query, Version(1));
+        MutableDocumentMap results = cache_->GetMatching(query, Version(1));
         std::vector<MutableDocument> docs = {
             Doc("b/old", 1, kDocData),
         };
-        EXPECT_THAT(results.underlying_map(), HasExactlyDocs(docs));
+        EXPECT_THAT(results, HasExactlyDocs(docs));
       });
 }
 
@@ -254,7 +252,7 @@ void RemoteDocumentCacheTest::SetAndReadTestDocument(
     const absl::string_view path) {
   persistence_->Run("SetAndReadTestDocument", [&] {
     MutableDocument written = SetTestDocument(path);
-    absl::optional<MaybeDocument> read = cache_->Get(testutil::Key(path));
+    absl::optional<MutableDocument> read = cache_->Get(testutil::Key(path));
     ASSERT_EQ(*read, written);
   });
 }

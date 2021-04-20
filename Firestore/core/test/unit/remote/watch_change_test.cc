@@ -32,7 +32,7 @@ using testutil::Doc;
 using testutil::Map;
 
 TEST(WatchChangeTest, CanCreateDocumentWatchChange) {
-  MaybeDocument doc = Doc("a/b", 1, Map());
+  MutableDocument doc = Doc("a/b", 1, Map());
   DocumentWatchChange change{{1, 2, 3}, {4, 5}, doc.key(), doc};
 
   EXPECT_EQ(change.updated_target_ids().size(), 3);

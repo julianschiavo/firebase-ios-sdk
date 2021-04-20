@@ -145,7 +145,7 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)applySuccessfulWriteWithResult:(const MutationBatchResult &)batchResult {
-  _writeEvents.push_back(batchResult);
+  _writeEvents.push_back(std::move(batchResult));
   XCTestExpectation *expectation = [self.writeEventExpectations objectAtIndex:0];
   [self.writeEventExpectations removeObjectAtIndex:0];
   [expectation fulfill];
