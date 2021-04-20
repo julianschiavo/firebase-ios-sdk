@@ -506,7 +506,9 @@ NSString *ToTargetIdListString(const ActiveTargetMap &map) {
 
   google_firestore_v1_ArrayValue tansforms{};
   MutationResult mutationResult(version, tansforms);
-  [self.driver receiveWriteAckWithVersion:version mutationResults:{mutationResult}];
+  std::vector<MutationResult> mutationResults;
+  mutationResults.emplace_back(std::move(mutationResult));
+  [self.driver receiveWriteAckWithVersion:version mutationResults:std::move(mutationResults)];
 }
 
 - (void)doFailWrite:(NSDictionary *)spec {

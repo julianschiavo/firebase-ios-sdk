@@ -144,7 +144,7 @@ NS_ASSUME_NONNULL_BEGIN
                                                                     description]]];
 }
 
-- (void)applySuccessfulWriteWithResult:(const MutationBatchResult &)batchResult {
+- (void)applySuccessfulWriteWithResult:(MutationBatchResult)batchResult {
   _writeEvents.push_back(std::move(batchResult));
   XCTestExpectation *expectation = [self.writeEventExpectations objectAtIndex:0];
   [self.writeEventExpectations removeObjectAtIndex:0];
@@ -194,8 +194,8 @@ class RemoteStoreEventCapture : public RemoteStoreCallback {
     [underlying_capture_ rejectListenWithTargetID:target_id error:error.ToNSError()];
   }
 
-  void HandleSuccessfulWrite(const MutationBatchResult &batch_result) override {
-    [underlying_capture_ applySuccessfulWriteWithResult:batch_result];
+  void HandleSuccessfulWrite( MutationBatchResult batch_result) override {
+    [underlying_capture_ applySuccessfulWriteWithResult:std::move(batch_result)];
   }
 
   void HandleRejectedWrite(BatchId batch_id, Status error) override {

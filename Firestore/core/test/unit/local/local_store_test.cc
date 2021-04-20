@@ -86,14 +86,6 @@ using testutil::UnknownDoc;
 using testutil::Value;
 using testutil::Vector;
 
-std::vector<MutableDocument> DocMapToVector(const MutableDocumentMap& docs) {
-  std::vector<MutableDocument> result;
-  for (const auto& kv : docs) {
-    result.push_back(kv.second);
-  }
-  return result;
-}
-
 std::vector<Document> DocMapToVector(const DocumentMap& docs) {
   std::vector<Document> result;
   for (const auto& kv : docs) {
@@ -262,7 +254,8 @@ void LocalStoreTest::AcknowledgeMutationWithVersion(
   }
 
   MutationResult mutation_result(version, mutation_transform_result);
-  std::vector<MutationResult> mutation_results{std::move(mutation_result)};
+  std::vector<MutationResult> mutation_results;
+  mutation_results.emplace_back(std::move(mutation_result));
   MutationBatchResult result(batch, version, std::move(mutation_results), {});
   last_changes_ = local_store_.AcknowledgeBatch(result);
 }
