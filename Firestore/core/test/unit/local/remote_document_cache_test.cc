@@ -299,11 +299,12 @@ MutableDocument RemoteDocumentCacheTest::SetTestDocument(
 
 void RemoteDocumentCacheTest::VerifyValue(MutableDocument actual_doc,
                                           google_firestore_v1_Value data) {
-  cache->Get()
+  MutableDocument expected_doc = Doc(actual_doc.key().ToString(), kVersion, data);
+  ASSERT_EQ(expected_doc, actual_doc);
 }
 
 void RemoteDocumentCacheTest::SetAndReadTestDocument(
-    const absl::string_view path, google_firestore_v1_Value data) {
+    const absl::string_view path) {
   persistence_->Run("SetAndReadTestDocument", [&] {
     MutableDocument written = SetTestDocument(path);
     absl::optional<MutableDocument> read = cache_->Get(Key(path));

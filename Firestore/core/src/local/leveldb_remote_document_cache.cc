@@ -270,6 +270,7 @@ MutableDocument LevelDbRemoteDocumentCache::DecodeMaybeDocument(
     absl::string_view encoded, const DocumentKey& key) {
   StringReader reader{encoded};
 
+  // FIXME this should not use message so it does not free the message
   auto message = Message<firestore_client_MaybeDocument>::TryParse(&reader);
   MutableDocument maybe_document =
       serializer_->DecodeMaybeDocument(&reader, *message);

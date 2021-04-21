@@ -216,7 +216,7 @@ class MutableDocument {
   DocumentKey key_;
   DocumentType document_type_ = DocumentType::kInvalid;
   SnapshotVersion version_;
-  std::shared_ptr<const ObjectValue> value_;
+  std::shared_ptr<const ObjectValue> value_{new ObjectValue};
   DocumentState document_state_ = DocumentState::kSynced;
 };
 

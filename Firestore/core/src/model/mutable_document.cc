@@ -18,6 +18,8 @@
 
 #include <sstream>
 
+#include "Firestore/core/src/model/value_util.h"
+
 namespace firebase {
 namespace firestore {
 namespace model {
@@ -94,7 +96,7 @@ size_t MutableDocument::Hash() const {
 std::string MutableDocument::ToString() const {
   std::stringstream stream;
   stream << "Document(key=" << key_ << ", type=" << document_type_
-         << ", version=" << version_ << ", value=" << value_
+         << ", version=" << version_ << ", value=" << CanonicalId(value_->Get())
          << ", state=" << document_state_;
   return stream.str();
 }
@@ -102,7 +104,7 @@ std::string MutableDocument::ToString() const {
 bool operator==(const MutableDocument& lhs, const MutableDocument& rhs) {
   return lhs.key_ == rhs.key_ && lhs.document_type_ == rhs.document_type_ &&
          lhs.version_ == rhs.version_ &&
-         lhs.document_state_ == rhs.document_state_ && lhs.value_ == rhs.value_;
+         lhs.document_state_ == rhs.document_state_ && *lhs.value_ == *rhs.value_;
 }
 
 std::ostream& operator<<(std::ostream& os, const MutableDocument& doc) {
