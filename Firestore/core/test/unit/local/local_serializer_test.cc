@@ -20,7 +20,6 @@
 #include "Firestore/Protos/cpp/firestore/local/maybe_document.pb.h"
 #include "Firestore/Protos/cpp/firestore/local/mutation.pb.h"
 #include "Firestore/Protos/cpp/firestore/local/target.pb.h"
-#include "Firestore/Protos/cpp/google/firestore/v1/firestore.pb.h"
 #include "Firestore/core/src/bundle/bundled_query.h"
 #include "Firestore/core/src/bundle/named_query.h"
 #include "Firestore/core/src/core/field_filter.h"
@@ -77,9 +76,8 @@ using model::TargetId;
 using nanopb::ByteString;
 using nanopb::ByteStringWriter;
 using nanopb::FreeNanopbMessage;
+using nanopb::MakeStdString;
 using nanopb::Message;
-using nanopb::ProtobufParse;
-using nanopb::ProtobufSerialize;
 using nanopb::StringReader;
 using nanopb::Writer;
 using testutil::DeletedDoc;
@@ -91,6 +89,7 @@ using testutil::Map;
 using testutil::OrderBy;
 using testutil::Query;
 using testutil::UnknownDoc;
+using testutil::Value;
 using testutil::WrapObject;
 using util::Status;
 
@@ -119,76 +118,74 @@ class LocalSerializerTest : public ::testing::Test {
     ExpectDeserializationRoundTrip(args...);
   }
 
-  static v1::Write SetProto() {
-    v1::Value b_value{};
-    *b_value.mutable_string_value() = "b";
-    v1::Value one_value{};
-    one_value.set_integer_value(1);
-
-    v1::Write set_proto{};
-    *set_proto.mutable_update()->mutable_name() =
-        "projects/p/databases/d/documents/docs/1";
-    (*set_proto.mutable_update()->mutable_fields())["a"] = b_value;
-    (*set_proto.mutable_update()->mutable_fields())["num"] = one_value;
+  static google_firestore_v1_Write SetProto() {
+    google_firestore_v1_Write set_proto{};
+    set_proto.which_operation = google_firestore_v1_Write_update_tag;
+    set_proto.update.name =
+        nanopb::MakeBytesArray("projects/p/databases/d/documents/docs/1");
+    set_proto.update.fields_count = 2;
+    set_proto.update.fields[0].key = nanopb::MakeBytesArray("a");
+    set_proto.update.fields[0].value = Value("b");
+    set_proto.update.fields[1].key = nanopb::MakeBytesArray("num");
+    set_proto.update.fields[1].value = Value("1");
     return set_proto;
   }
 
-  static v1::Write PatchProto() {
-    v1::Value b_value{};
-    *b_value.mutable_string_value() = "b";
-    v1::Value one_value{};
-    one_value.set_integer_value(1);
-
-    v1::Write patch_proto{};
-    *patch_proto.mutable_update()->mutable_name() =
-        "projects/p/databases/d/documents/docs/1";
-    (*patch_proto.mutable_update()->mutable_fields())["a"] = b_value;
-    (*patch_proto.mutable_update()->mutable_fields())["num"] = one_value;
-    patch_proto.mutable_update_mask()->add_field_paths("a");
-    patch_proto.mutable_current_document()->set_exists(true);
+  static google_firestore_v1_Write PatchProto() {
+    google_firestore_v1_Write patch_proto = SetProto();
+    patch_proto.update_mask.field_paths_count = 1;
+    patch_proto.update_mask.field_paths =
+        nanopb::MakeArray<pb_bytes_array_t*>(1);
+    patch_proto.update_mask.field_paths[0] = nanopb::MakeBytesArray("a");
+    patch_proto.current_document.which_condition_type =
+        google_firestore_v1_Precondition_exists_tag;
+    patch_proto.current_document.exists = true;
     return patch_proto;
   }
 
-  static v1::Write DeleteProto() {
-    v1::Write delete_proto{};
-    *delete_proto.mutable_delete_() = "projects/p/databases/d/documents/docs/1";
+  static google_firestore_v1_Write DeleteProto() {
+    google_firestore_v1_Write delete_proto{};
+    delete_proto.which_operation = google_firestore_v1_Write_delete_tag;
+    delete_proto.delete_ =
+        nanopb::MakeBytesArray("projects/p/databases/d/documents/docs/1");
     return delete_proto;
   }
 
-  static v1::Write LegacyTransformProto() {
-    v1::Write transform_proto{};
+  static google_firestore_v1_Write LegacyTransformProto() {
+    google_firestore_v1_Write transform_proto{};
 
-    v1::DocumentTransform::FieldTransform inc_proto1;
-    v1::Value inc1_value{};
-    inc1_value.set_integer_value(42);
-    inc_proto1.set_field_path("integer");
-    *inc_proto1.mutable_increment() = inc1_value;
+    google_firestore_v1_DocumentTransform_FieldTransform inc_proto1;
+    inc_proto1.field_path = nanopb::MakeBytesArray("integer");
+    inc_proto1.increment = Value(42);
 
-    v1::DocumentTransform::FieldTransform inc_proto2;
-    v1::Value inc2_value{};
-    inc2_value.set_double_value(13.37);
-    inc_proto2.set_field_path("double");
-    *inc_proto2.mutable_increment() = inc2_value;
+    google_firestore_v1_DocumentTransform_FieldTransform inc_proto2;
+    inc_proto2.field_path = nanopb::MakeBytesArray("double");
+    inc_proto2.increment = Value(13.37);
 
-    *transform_proto.mutable_transform()->add_field_transforms() =
-        std::move(inc_proto1);
-    *transform_proto.mutable_transform()->add_field_transforms() =
-        std::move(inc_proto2);
+    transform_proto.which_operation = google_firestore_v1_Write_transform_tag;
+    transform_proto.transform.field_transforms_count = 2;
+    transform_proto.transform.field_transforms =
+        nanopb::MakeArray<google_firestore_v1_DocumentTransform_FieldTransform>(
+            2);
+    transform_proto.transform.field_transforms[0] = inc_proto1;
+    transform_proto.transform.field_transforms[1] = inc_proto2;
 
-    transform_proto.mutable_current_document()->set_exists(true);
-    transform_proto.mutable_transform()->set_document(
-        "projects/p/databases/d/documents/docs/1");
+    transform_proto.current_document.which_condition_type =
+        google_firestore_v1_Precondition_exists_tag;
+    transform_proto.current_document.exists = true;
+    transform_proto.transform.document =
+        nanopb::MakeBytesArray("projects/p/databases/d/documents/docs/1");
     return transform_proto;
   }
 
-  ::google::protobuf::Timestamp WriteTimeProto() {
-    ::google::protobuf::Timestamp write_time_proto{};
-    write_time_proto.set_seconds(write_time_.seconds());
-    write_time_proto.set_nanos(write_time_.nanoseconds());
+  google_protobuf_Timestamp WriteTimeProto() {
+    google_protobuf_Timestamp write_time_proto{};
+    write_time_proto.seconds = write_time_.seconds();
+    write_time_proto.nanos = write_time_.nanoseconds();
     return write_time_proto;
   }
 
-  static void ExpectSet(_google_firestore_v1_Write encoded) {
+  static void ExpectSet(google_firestore_v1_Write encoded) {
     EXPECT_EQ(google_firestore_v1_Write_update_tag, encoded.which_operation);
     EXPECT_EQ(2, encoded.update.fields_count);
     EXPECT_EQ("a", nanopb::MakeString(encoded.update.fields[0].key));
@@ -200,7 +197,7 @@ class LocalSerializerTest : public ::testing::Test {
     EXPECT_FALSE(encoded.has_current_document);
   }
 
-  static void ExpectPatch(_google_firestore_v1_Write encoded) {
+  static void ExpectPatch(google_firestore_v1_Write encoded) {
     EXPECT_EQ(google_firestore_v1_Write_update_tag, encoded.which_operation);
     EXPECT_EQ(2, encoded.update.fields_count);
     EXPECT_EQ("a", nanopb::MakeString(encoded.update.fields[0].key));
@@ -214,11 +211,11 @@ class LocalSerializerTest : public ::testing::Test {
     EXPECT_TRUE(encoded.current_document.exists);
   }
 
-  static void ExpectDelete(_google_firestore_v1_Write encoded) {
+  static void ExpectDelete(google_firestore_v1_Write encoded) {
     EXPECT_EQ(google_firestore_v1_Write_delete_tag, encoded.which_operation);
   }
 
-  static void ExpectUpdateTransform(_google_firestore_v1_Write encoded) {
+  static void ExpectUpdateTransform(google_firestore_v1_Write encoded) {
     EXPECT_EQ(2, encoded.update_transforms_count);
     EXPECT_EQ(
         google_firestore_v1_DocumentTransform_FieldTransform_increment_tag,
@@ -234,7 +231,7 @@ class LocalSerializerTest : public ::testing::Test {
     EXPECT_EQ(13.37, encoded.update_transforms[1].increment.double_value);
   }
 
-  static void ExpectNoUpdateTransform(_google_firestore_v1_Write encoded) {
+  static void ExpectNoUpdateTransform(google_firestore_v1_Write encoded) {
     EXPECT_EQ(0, encoded.update_transforms_count);
   }
 
@@ -250,7 +247,7 @@ class LocalSerializerTest : public ::testing::Test {
   void ExpectDeserializationRoundTrip(
       const MutableDocument& model,
       const ::firestore::client::MaybeDocument& proto) {
-    ByteString bytes = ProtobufSerialize(proto);
+    std::string bytes = MakeStdString(proto);
     StringReader reader(bytes);
     auto message = Message<firestore_client_MaybeDocument>::TryParse(&reader);
     auto actual_model = serializer.DecodeMaybeDocument(&reader, *message);
@@ -291,7 +288,7 @@ class LocalSerializerTest : public ::testing::Test {
 
   void ExpectSerializationRoundTrip(
       const MutationBatch& model,
-      const ::firestore::client::WriteBatch& proto) {
+      const Message<firestore_client_WriteBatch>& proto) {
     ByteString bytes = EncodeMutationBatch(&serializer, model);
     auto actual = ProtobufParse<::firestore::client::WriteBatch>(bytes);
     EXPECT_TRUE(msg_diff.Compare(proto, actual)) << message_differences;
@@ -299,8 +296,8 @@ class LocalSerializerTest : public ::testing::Test {
 
   void ExpectDeserializationRoundTrip(
       const MutationBatch& model,
-      const ::firestore::client::WriteBatch& proto) {
-    ByteString bytes = ProtobufSerialize(proto);
+      const Message<firestore_client_WriteBatch>& proto) {
+    std::string bytes = MakeStdString(proto);
     StringReader reader(bytes);
 
     auto message = Message<firestore_client_WriteBatch>::TryParse(&reader);
@@ -328,9 +325,10 @@ class LocalSerializerTest : public ::testing::Test {
     return MakeByteString(serializer->EncodeNamedQuery(named_query));
   }
 
-  void ExpectDeserializationRoundTrip(const NamedQuery& named_query,
-                                      const ::firestore::NamedQuery& proto) {
-    ByteString bytes = ProtobufSerialize(proto);
+  void ExpectDeserializationRoundTrip(
+      const NamedQuery& named_query,
+      const Message<firestore_NamedQuery>& proto) {
+    std::string bytes = MakeStdString(proto);
     StringReader reader(bytes);
 
     auto message = Message<firestore_NamedQuery>::TryParse(&reader);
@@ -347,13 +345,15 @@ class LocalSerializerTest : public ::testing::Test {
 
 // TODO(b/174608374): Remove these tests once we perform a schema migration.
 TEST_F(LocalSerializerTest, SetMutationAndTransformMutationAreSquashed) {
-  ::firestore::client::WriteBatch batch_proto{};
-  batch_proto.set_batch_id(42);
-  *batch_proto.add_writes() = SetProto();
-  *batch_proto.add_writes() = LegacyTransformProto();
-  *batch_proto.mutable_local_write_time() = WriteTimeProto();
+  firestore_client_WriteBatch batch_proto{};
+  batch_proto.batch_id = 42;
+  batch_proto.writes = nanopb::MakeArray<google_firestore_v1_Write>(2);
+  batch_proto.writes[0] = SetProto();
+  batch_proto.writes[1] = LegacyTransformProto();
+  batch_proto.local_write_time = WriteTimeProto();
 
-  ByteString bytes = ProtobufSerialize(batch_proto);
+  auto source = Message<firestore_client_WriteBatch>{batch_proto};
+  std::string bytes = MakeStdString(source);
   StringReader reader(bytes);
   auto message = Message<firestore_client_WriteBatch>::TryParse(&reader);
   MutationBatch decoded = serializer.DecodeMutationBatch(&reader, *message);
@@ -368,13 +368,15 @@ TEST_F(LocalSerializerTest, SetMutationAndTransformMutationAreSquashed) {
 
 // TODO(b/174608374): Remove these tests once we perform a schema migration.
 TEST_F(LocalSerializerTest, PatchMutationAndTransformMutationAreSquashed) {
-  ::firestore::client::WriteBatch batch_proto{};
-  batch_proto.set_batch_id(42);
-  *batch_proto.add_writes() = PatchProto();
-  *batch_proto.add_writes() = LegacyTransformProto();
-  *batch_proto.mutable_local_write_time() = WriteTimeProto();
+  firestore_client_WriteBatch batch_proto{};
+  batch_proto.batch_id = 42;
+  batch_proto.writes = nanopb::MakeArray<google_firestore_v1_Write>(2);
+  batch_proto.writes[0] = PatchProto();
+  batch_proto.writes[1] = LegacyTransformProto();
+  batch_proto.local_write_time = WriteTimeProto();
 
-  ByteString bytes = ProtobufSerialize(batch_proto);
+  auto source = Message<firestore_client_WriteBatch>{batch_proto};
+  std::string bytes = MakeStdString(source);
   StringReader reader(bytes);
   auto message = Message<firestore_client_WriteBatch>::TryParse(&reader);
   MutationBatch decoded = serializer.DecodeMutationBatch(&reader, *message);
@@ -389,13 +391,15 @@ TEST_F(LocalSerializerTest, PatchMutationAndTransformMutationAreSquashed) {
 
 // TODO(b/174608374): Remove these tests once we perform a schema migration.
 TEST_F(LocalSerializerTest, TransformAndTransformThrowError) {
-  ::firestore::client::WriteBatch batch_proto{};
-  batch_proto.set_batch_id(42);
-  *batch_proto.add_writes() = LegacyTransformProto();
-  *batch_proto.add_writes() = LegacyTransformProto();
-  *batch_proto.mutable_local_write_time() = WriteTimeProto();
+  firestore_client_WriteBatch batch_proto{};
+  batch_proto.batch_id = 42;
+  batch_proto.writes = nanopb::MakeArray<google_firestore_v1_Write>(2);
+  batch_proto.writes[0] = LegacyTransformProto();
+  batch_proto.writes[1] = LegacyTransformProto();
+  batch_proto.local_write_time = WriteTimeProto();
 
-  ByteString bytes = ProtobufSerialize(batch_proto);
+  auto source = Message<firestore_client_WriteBatch>{batch_proto};
+  std::string bytes = MakeStdString(source);
   StringReader reader(bytes);
   auto message = Message<firestore_client_WriteBatch>::TryParse(&reader);
   EXPECT_ANY_THROW(serializer.DecodeMutationBatch(&reader, *message));
@@ -403,13 +407,15 @@ TEST_F(LocalSerializerTest, TransformAndTransformThrowError) {
 
 // TODO(b/174608374): Remove these tests once we perform a schema migration.
 TEST_F(LocalSerializerTest, DeleteAndTransformThrowError) {
-  ::firestore::client::WriteBatch batch_proto{};
-  batch_proto.set_batch_id(42);
-  *batch_proto.add_writes() = DeleteProto();
-  *batch_proto.add_writes() = LegacyTransformProto();
-  *batch_proto.mutable_local_write_time() = WriteTimeProto();
+  firestore_client_WriteBatch batch_proto{};
+  batch_proto.batch_id = 42;
+  batch_proto.writes = nanopb::MakeArray<google_firestore_v1_Write>(2);
+  batch_proto.writes[0] = DeleteProto();
+  batch_proto.writes[1] = LegacyTransformProto();
+  batch_proto.local_write_time = WriteTimeProto();
 
-  ByteString bytes = ProtobufSerialize(batch_proto);
+  auto source = Message<firestore_client_WriteBatch>{batch_proto};
+  std::string bytes = MakeStdString(source);
   StringReader reader(bytes);
   auto message = Message<firestore_client_WriteBatch>::TryParse(&reader);
   EXPECT_ANY_THROW(serializer.DecodeMutationBatch(&reader, *message));
@@ -417,18 +423,20 @@ TEST_F(LocalSerializerTest, DeleteAndTransformThrowError) {
 
 // TODO(b/174608374): Remove these tests once we perform a schema migration.
 TEST_F(LocalSerializerTest, MultipleMutationsAreSquashed) {
-  ::firestore::client::WriteBatch batch_proto{};
-  batch_proto.set_batch_id(42);
-  *batch_proto.add_writes() = SetProto();
-  *batch_proto.add_writes() = SetProto();
-  *batch_proto.add_writes() = LegacyTransformProto();
-  *batch_proto.add_writes() = DeleteProto();
-  *batch_proto.add_writes() = PatchProto();
-  *batch_proto.add_writes() = LegacyTransformProto();
-  *batch_proto.add_writes() = PatchProto();
-  *batch_proto.mutable_local_write_time() = WriteTimeProto();
+  firestore_client_WriteBatch batch_proto{};
+  batch_proto.batch_id = 42;
+  batch_proto.writes = nanopb::MakeArray<google_firestore_v1_Write>(7);
+  batch_proto.writes[0] = SetProto();
+  batch_proto.writes[1] = SetProto();
+  batch_proto.writes[2] = LegacyTransformProto();
+  batch_proto.writes[3] = DeleteProto();
+  batch_proto.writes[4] = PatchProto();
+  batch_proto.writes[5] = LegacyTransformProto();
+  batch_proto.writes[6] = PatchProto();
+  batch_proto.local_write_time = WriteTimeProto();
 
-  ByteString bytes = ProtobufSerialize(batch_proto);
+  auto source = Message<firestore_client_WriteBatch>{batch_proto};
+  std::string bytes = MakeStdString(source);
   StringReader reader(bytes);
   auto message = Message<firestore_client_WriteBatch>::TryParse(&reader);
   MutationBatch decoded = serializer.DecodeMutationBatch(&reader, *message);
@@ -463,23 +471,28 @@ TEST_F(LocalSerializerTest, EncodesMutationBatch) {
 
   MutationBatch model(42, write_time_, {base}, {set, patch, del});
 
-  v1::Value b_value{};
-  *b_value.mutable_string_value() = "b";
+  google_firestore_v1_Write base_proto{};
+  base_proto.which_operation = google_firestore_v1_Write_update_tag;
+  base_proto.update.name =
+      nanopb::MakeBytesArray("projects/p/databases/d/documents/docs/1");
+  base_proto.update.fields_count = 1;
+  base_proto.update.fields[0].key = nanopb::MakeBytesArray("a");
+  base_proto.update.fields[0].value = Value("b");
+  base_proto.update_mask.field_paths[0] = nanopb::MakeBytesArray("a");
+  base_proto.current_document.which_condition_type =
+      google_firestore_v1_Precondition_exists_tag;
+  base_proto.current_document.exists = true;
 
-  v1::Write base_proto{};
-  *base_proto.mutable_update()->mutable_name() =
-      "projects/p/databases/d/documents/docs/1";
-  (*base_proto.mutable_update()->mutable_fields())["a"] = b_value;
-  base_proto.mutable_update_mask()->add_field_paths("a");
-  base_proto.mutable_current_document()->set_exists(true);
-
-  ::firestore::client::WriteBatch batch_proto{};
-  batch_proto.set_batch_id(42);
-  *batch_proto.add_base_writes() = base_proto;
-  *batch_proto.add_writes() = SetProto();
-  *batch_proto.add_writes() = PatchProto();
-  *batch_proto.add_writes() = DeleteProto();
-  *batch_proto.mutable_local_write_time() = WriteTimeProto();
+  firestore_client_WriteBatch batch_proto{};
+  batch_proto.batch_id = 42;
+  batch_proto.base_writes_count = 1;
+  batch_proto.base_writes = nanopb::MakeArray<google_firestore_v1_Write>(1)
+                                batch_proto.base_writes[0] = base_proto;
+  batch_proto.writes = nanopb::MakeArray<google_firestore_v1_Write>(2);
+  batch_proto.writes[0] = SetProto();
+  batch_proto.writes[1] = PatchProto();
+  batch_proto.writes[2] = DeleteProto();
+  batch_proto.local_write_time = WriteTimeProto();
 
   ExpectRoundTrip(model, batch_proto);
 }

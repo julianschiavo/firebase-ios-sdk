@@ -286,6 +286,7 @@ google_firestore_v1_Document Serializer::EncodeDocument(
   result.fields = MakeArray<google_firestore_v1_Document_FieldsEntry>(
       map_value.fields_count);
   for (pb_size_t i = 0; i < map_value.fields_count; ++i) {
+    // FIXME No copy
     _google_firestore_v1_MapValue_FieldsEntry& entry = map_value.fields[i];
     result.fields[i].key =
         nanopb::MakeBytesArray(entry.key->bytes, entry.key->size);
