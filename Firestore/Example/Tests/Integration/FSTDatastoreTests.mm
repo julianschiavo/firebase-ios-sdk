@@ -194,7 +194,7 @@ class RemoteStoreEventCapture : public RemoteStoreCallback {
     [underlying_capture_ rejectListenWithTargetID:target_id error:error.ToNSError()];
   }
 
-  void HandleSuccessfulWrite( MutationBatchResult batch_result) override {
+  void HandleSuccessfulWrite(MutationBatchResult batch_result) override {
     [underlying_capture_ applySuccessfulWriteWithResult:std::move(batch_result)];
   }
 

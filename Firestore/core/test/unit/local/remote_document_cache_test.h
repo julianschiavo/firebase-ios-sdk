@@ -19,8 +19,8 @@
 
 #include <memory>
 
-#include "absl/strings/string_view.h"
 #include "Firestore/Protos/nanopb/google/firestore/v1/document.nanopb.h"
+#include "absl/strings/string_view.h"
 #include "gtest/gtest.h"
 
 namespace firebase {
@@ -55,13 +55,17 @@ class RemoteDocumentCacheTest : public ::testing::TestWithParam<FactoryFunc> {
 
  protected:
   model::MutableDocument SetTestDocument(absl::string_view path);
-    model::MutableDocument SetTestDocument(absl::string_view path,google_firestore_v1_Value data);
-    model::MutableDocument SetTestDocument(absl::string_view path,
-                                           int update_time,
-                                           int read_time);
-  model::MutableDocument SetTestDocument(absl::string_view path,google_firestore_v1_Value data,
+  model::MutableDocument SetTestDocument(absl::string_view path,
+                                         google_firestore_v1_Value data);
+  model::MutableDocument SetTestDocument(absl::string_view path,
                                          int update_time,
-                                         int read_time);  void VerifyValue(model::MutableDocument actual_doc,google_firestore_v1_Value data);
+                                         int read_time);
+  model::MutableDocument SetTestDocument(absl::string_view path,
+                                         google_firestore_v1_Value data,
+                                         int update_time,
+                                         int read_time);
+  void VerifyValue(model::MutableDocument actual_doc,
+                   google_firestore_v1_Value data);
   void SetAndReadTestDocument(absl::string_view path);
 
   std::unique_ptr<Persistence> persistence_;
