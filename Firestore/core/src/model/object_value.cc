@@ -193,9 +193,9 @@ ObjectValue ObjectValue::FromFieldsEntry(
       nanopb::MakeArray<google_firestore_v1_MapValue_FieldsEntry>(count);
   for (pb_size_t i = 0; i < count; ++i) {
     // FIXME: Remove copies
-    value.map_value.fields[i].key = nanopb::MakeBytesArray(nanopb::MakeString(fields_entry[i].key));
-    value.map_value.fields[i].value =DeepClone(
-        fields_entry[i].value);
+    value.map_value.fields[i].key =
+        nanopb::MakeBytesArray(nanopb::MakeString(fields_entry[i].key));
+    value.map_value.fields[i].value = DeepClone(fields_entry[i].value);
   }
   return ObjectValue{value};
 }

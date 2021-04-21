@@ -104,7 +104,8 @@ std::string MutableDocument::ToString() const {
 bool operator==(const MutableDocument& lhs, const MutableDocument& rhs) {
   return lhs.key_ == rhs.key_ && lhs.document_type_ == rhs.document_type_ &&
          lhs.version_ == rhs.version_ &&
-         lhs.document_state_ == rhs.document_state_ && *lhs.value_ == *rhs.value_;
+         lhs.document_state_ == rhs.document_state_ &&
+         *lhs.value_ == *rhs.value_;
 }
 
 std::ostream& operator<<(std::ostream& os, const MutableDocument& doc) {

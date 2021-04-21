@@ -105,7 +105,7 @@ RemoteDocumentCacheTest::RemoteDocumentCacheTest()
 
 TEST_P(RemoteDocumentCacheTest, ReadDocumentNotInCache) {
   persistence_->Run("test_read_document_not_in_cache", [&] {
-    ASSERT_TRUE(cache_->Get(Key(kDocPath)).is_unknown_document());
+    ASSERT_FALSE(cache_->Get(Key(kDocPath)).is_valid_document());
   });
 }
 
@@ -141,7 +141,7 @@ TEST_P(RemoteDocumentCacheTest,
         EXPECT_THAT(read, HasAtLeastDocs(written));
         auto found = read.find(DocumentKey::FromPathString("foo/nonexistent"));
         ASSERT_TRUE(found != read.end());
-        ASSERT_TRUE(found->second.is_unknown_document());
+        ASSERT_FALSE(found->second.is_valid_document());
       });
 }
 
@@ -299,7 +299,8 @@ MutableDocument RemoteDocumentCacheTest::SetTestDocument(
 
 void RemoteDocumentCacheTest::VerifyValue(MutableDocument actual_doc,
                                           google_firestore_v1_Value data) {
-  MutableDocument expected_doc = Doc(actual_doc.key().ToString(), kVersion, data);
+  MutableDocument expected_doc =
+      Doc(actual_doc.key().ToString(), kVersion, data);
   ASSERT_EQ(expected_doc, actual_doc);
 }
 

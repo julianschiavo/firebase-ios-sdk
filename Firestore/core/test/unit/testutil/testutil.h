@@ -161,11 +161,17 @@ google_firestore_v1_Value AddPairs(const google_firestore_v1_Value& prior,
   pb_size_t new_count = result.map_value.fields_count + 1;
   result.map_value.fields_count = new_count;
   result.map_value.fields =
-      static_cast<_google_firestore_v1_MapValue_FieldsEntry*>(realloc(
-          result.map_value.fields,
-          new_count * sizeof(_google_firestore_v1_MapValue_FieldsEntry)));
+      nanopb::ResizeArray<google_firestore_v1_MapValue_FieldsEntry>(
+          result.map_value.fields, new_count);
   result.map_value.fields[new_count - 1].key = nanopb::MakeBytesArray(key);
   result.map_value.fields[new_count - 1].value = Value(value);
+
+  std::sort(result.map_value.fields, result.map_value.fields + new_count,
+            [](const google_firestore_v1_MapValue_FieldsEntry& lhs,
+               const google_firestore_v1_MapValue_FieldsEntry& rhs) -> bool {
+              return nanopb::MakeStringView(lhs.key) <
+                     nanopb::MakeStringView(rhs.key);
+            });
 
   return AddPairs(result, rest...);
 }
@@ -189,6 +195,8 @@ google_firestore_v1_Value Array(Args... values) {
   google_firestore_v1_Value result{};
   result.which_value_type = google_firestore_v1_Value_array_value_tag;
   result.array_value.values_count = static_cast<pb_size_t>(contents.size());
+  result.array_value.values = nanopb::MakeArray<google_firestore_v1_Value>(
+      result.array_value.values_count);
   for (size_t i = 0; i < contents.size(); ++i) {
     result.array_value.values[i] = contents[i];
   }

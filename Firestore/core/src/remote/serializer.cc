@@ -905,7 +905,9 @@ Filter Serializer::DecodeFieldFilter(
   FieldPath field_path =
       DecodeFieldPath(context, field_filter.field.field_path);
   Filter::Operator op = DecodeFieldFilterOperator(context, field_filter.op);
-  return FieldFilter::Create(std::move(field_path), op, field_filter.value);
+  // FIXME: Don't make this copy
+  return FieldFilter::Create(std::move(field_path), op,
+                             DeepClone(field_filter.value));
 }
 
 Filter Serializer::DecodeUnaryFilter(
