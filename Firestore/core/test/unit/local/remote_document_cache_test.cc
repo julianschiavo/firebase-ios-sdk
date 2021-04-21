@@ -24,6 +24,7 @@
 #include "Firestore/core/src/local/persistence.h"
 #include "Firestore/core/src/local/remote_document_cache.h"
 #include "Firestore/core/src/model/document_key.h"
+#include "Firestore/core/src/model/object_value.h"
 #include "Firestore/core/src/model/document_key_set.h"
 #include "Firestore/core/src/util/string_apple.h"
 #include "Firestore/core/test/unit/testutil/testutil.h"
@@ -39,6 +40,7 @@ namespace {
 using model::DocumentKey;
 using model::DocumentKeySet;
 using model::DocumentMap;
+    using model::ObjectValue;
 using model::MutableDocument;
 using model::MutableDocumentMap;
 using model::SnapshotVersion;
@@ -49,6 +51,9 @@ using testing::UnorderedElementsAreArray;
 using testutil::DeletedDoc;
 using testutil::Doc;
 using testutil::Map;
+    using testutil::Key;
+    using testutil::Value;
+    using testutil::Field;
 using testutil::Query;
 using testutil::Version;
 
@@ -100,7 +105,7 @@ RemoteDocumentCacheTest::RemoteDocumentCacheTest()
 
 TEST_P(RemoteDocumentCacheTest, ReadDocumentNotInCache) {
   persistence_->Run("test_read_document_not_in_cache", [&] {
-    ASSERT_TRUE(cache_->Get(testutil::Key(kDocPath)).is_unknown_document());
+    ASSERT_TRUE(cache_->Get(Key(kDocPath)).is_unknown_document());
   });
 }
 
@@ -115,7 +120,7 @@ TEST_P(RemoteDocumentCacheTest, SetAndReadSeveralDocuments) {
         SetTestDocument(kLongDocPath),
     };
     MutableDocumentMap read = cache_->GetAll(
-        DocumentKeySet{testutil::Key(kDocPath), testutil::Key(kLongDocPath)});
+        DocumentKeySet{Key(kDocPath), Key(kLongDocPath)});
     EXPECT_THAT(read, HasExactlyDocs(written));
   });
 }
@@ -129,9 +134,9 @@ TEST_P(RemoteDocumentCacheTest,
             SetTestDocument(kLongDocPath),
         };
         MutableDocumentMap read = cache_->GetAll(DocumentKeySet{
-            testutil::Key(kDocPath),
-            testutil::Key(kLongDocPath),
-            testutil::Key("foo/nonexistent"),
+            Key(kDocPath),
+            Key(kLongDocPath),
+            Key("foo/nonexistent"),
         });
         EXPECT_THAT(read, HasAtLeastDocs(written));
         auto found = read.find(DocumentKey::FromPathString("foo/nonexistent"));
@@ -150,7 +155,7 @@ TEST_P(RemoteDocumentCacheTest, SetAndReadDeletedDocument) {
         DeletedDoc(kDocPath, kVersion);
     cache_->Add(*deleted_doc, deleted_doc->version());
 
-    ASSERT_EQ(cache_->Get(testutil::Key(kDocPath)), deleted_doc);
+    ASSERT_EQ(cache_->Get(Key(kDocPath)), deleted_doc);
   });
 }
 
@@ -160,23 +165,23 @@ TEST_P(RemoteDocumentCacheTest, SetDocumentToNewValue) {
     absl::optional<MutableDocument> new_doc =
         Doc(kDocPath, kVersion, Map("data", 2));
     cache_->Add(*new_doc, new_doc->version());
-    ASSERT_EQ(cache_->Get(testutil::Key(kDocPath)), new_doc);
+    ASSERT_EQ(cache_->Get(Key(kDocPath)), new_doc);
   });
 }
 
 TEST_P(RemoteDocumentCacheTest, RemoveDocument) {
   persistence_->Run("test_remove_document", [&] {
     SetTestDocument(kDocPath);
-    cache_->Remove(testutil::Key(kDocPath));
+    cache_->Remove(Key(kDocPath));
 
-    ASSERT_TRUE(cache_->Get(testutil::Key(kDocPath)).is_unknown_document());
+    ASSERT_TRUE(cache_->Get(Key(kDocPath)).is_unknown_document());
   });
 }
 
 TEST_P(RemoteDocumentCacheTest, RemoveNonExistentDocument) {
   persistence_->Run("test_remove_non_existent_document", [&] {
     // no-op, but make sure it doesn't throw.
-    EXPECT_NO_THROW(cache_->Remove(testutil::Key(kDocPath)));
+    EXPECT_NO_THROW(cache_->Remove(Key(kDocPath)));
   });
 }
 
@@ -233,25 +238,71 @@ TEST_P(RemoteDocumentCacheTest, DocumentsMatchingUsesReadTimeNotUpdateTime) {
       });
 }
 
+    TEST_P(RemoteDocumentCacheTest, DoesNotApplyDocumentModificationsToCache) {
+          // This test verifies that the MemoryMutationCache returns copies of all
+          // data to ensure that the documents in the cache cannot be modified.
+          persistence_->Run("test_does_not_apply_document_modifications_to_cache", [&] {
+              MutableDocument document = SetTestDocument("coll/doc",
+                                                               Map("value",
+                                                                   "old"));
+              document = cache_->Get(Key("coll/doc"));
+              VerifyValue(document, Map("value", "old"));
+              document.ConvertToFoundDocument(Version(kVersion), ObjectValue{Map("value","new")});
+
+              document = cache_->Get(Key("coll/doc"));
+              VerifyValue(document, Map("value", "old"));
+              document.ConvertToFoundDocument(Version(kVersion), ObjectValue{Map("value","new")});
+
+               MutableDocumentMap documents = cache_->GetAll(DocumentKeySet{Key("coll/doc")});
+              document = documents.find(Key("coll/doc"))->second;
+              VerifyValue(document, Map("value", "old"));
+              document.ConvertToFoundDocument(Version(kVersion), ObjectValue{Map("value","new")});
+
+              documents = cache_->GetMatching(Query("coll"), SnapshotVersion::None());
+              document = documents.find(Key("coll/doc"))->second;
+              VerifyValue(document, Map("value", "old"));
+              document.ConvertToFoundDocument(Version(kVersion), ObjectValue{Map("value","new")});
+
+              document = cache_->Get(Key("coll/doc"));
+              VerifyValue(document, Map("value", "old"));
+          });
+        }
 // MARK: - Helpers
 
 MutableDocument RemoteDocumentCacheTest::SetTestDocument(
-    const absl::string_view path, int update_time, int read_time) {
-  MutableDocument doc = Doc(path, update_time, kDocData);
+    const absl::string_view path, google_firestore_v1_Value data, int update_time, int read_time) {
+  MutableDocument doc = Doc(path, update_time, data);
   cache_->Add(doc, Version(read_time));
   return doc;
 }
 
+        MutableDocument RemoteDocumentCacheTest::SetTestDocument(
+                const absl::string_view path, int update_time, int read_time) {
+          return SetTestDocument(path,kDocData, update_time, read_time);
+        }
+        
 MutableDocument RemoteDocumentCacheTest::SetTestDocument(
-    const absl::string_view path) {
-  return SetTestDocument(path, kVersion, kVersion);
+    const absl::string_view path,google_firestore_v1_Value data) {
+  return SetTestDocument(path, data,kVersion, kVersion);
 }
 
+
+        MutableDocument RemoteDocumentCacheTest::SetTestDocument(
+                const absl::string_view path) {
+          return SetTestDocument(path,kDocData, kVersion, kVersion);
+        }
+
+
+        void RemoteDocumentCacheTest::VerifyValue(
+                MutableDocument actual_doc,google_firestore_v1_Value data) {
+cache->Get()
+        }
+
 void RemoteDocumentCacheTest::SetAndReadTestDocument(
-    const absl::string_view path) {
+    const absl::string_view path,google_firestore_v1_Value data) {
   persistence_->Run("SetAndReadTestDocument", [&] {
     MutableDocument written = SetTestDocument(path);
-    absl::optional<MutableDocument> read = cache_->Get(testutil::Key(path));
+    absl::optional<MutableDocument> read = cache_->Get(Key(path));
     ASSERT_EQ(*read, written);
   });
 }
