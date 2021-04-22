@@ -31,7 +31,6 @@ namespace model {
 
 namespace {
 
-using nanopb::FieldsArray;
 using nanopb::FreeFieldsArray;
 using nanopb::MakeArray;
 using nanopb::MakeBytesArray;
