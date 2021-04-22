@@ -81,12 +81,7 @@ class MutableDocument {
   };
 
  public:
-  //  Document(const Document& other)=default;
   MutableDocument() = default;
-  //  //  Document(Document&& other) =default;
-  //  Document& operator=(const Document&) {
-  //    return *this;
-  //  }
 
   /**
    * Creates a document with no known version or data. This document can serve

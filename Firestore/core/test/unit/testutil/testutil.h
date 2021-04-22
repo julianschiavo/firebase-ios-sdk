@@ -184,7 +184,9 @@ google_firestore_v1_Value AddPairs(const google_firestore_v1_Value& prior,
  */
 template <typename... Args>
 google_firestore_v1_Value MakeMap(Args... key_value_pairs) {
-  return AddPairs(google_firestore_v1_Value{}, key_value_pairs...);
+  google_firestore_v1_Value map_value{};
+  map_value.which_value_type = google_firestore_v1_Value_map_value_tag;
+  return AddPairs(map_value, key_value_pairs...);
 }
 
 }  // namespace details

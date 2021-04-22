@@ -202,12 +202,12 @@ class LocalSerializerTest : public ::testing::Test {
     HARD_ASSERT(
         map_value.which_value_type == google_firestore_v1_Value_map_value_tag,
         "Expected a Map");
-    google_firestore_v1_MapValue& map = map_value.map_value;
-    *fields_array = MakeArray<T>(map.fields_count);
-    *fields_count = map.fields_count;
-    for (pb_size_t i = 0; i < map.fields_count; ++i) {
-      (*fields_array)[i].key = map.fields[i].key;
-      (*fields_array)[i].value = map.fields[i].value;
+    google_firestore_v1_MapValue& input = map_value.map_value;
+    *fields_array = MakeArray<T>(input.fields_count);
+    *fields_count = input.fields_count;
+    for (pb_size_t i = 0; i < input.fields_count; ++i) {
+      (*fields_array)[i].key = input.fields[i].key;
+      (*fields_array)[i].value = input.fields[i].value;
     }
   }
 
@@ -263,14 +263,10 @@ class LocalSerializerTest : public ::testing::Test {
 
   void ExpectRoundTrip(const MutableDocument& expected,
                        const Message<firestore_client_MaybeDocument>& proto) {
-    // Convert nanopb to bytes and read back with Protobuf
+    // Convert nanopb to bytes and read back. We don't use Protobuf here
+    // since round-tripping through Protobuf does not maintain map field order
     ByteString nanopb_bytes = MakeByteString(proto);
-    auto protobuf_msg =
-        ProtobufParse<::firestore::client::WriteBatch>(nanopb_bytes);
-
-    // Convert Protobuf to bytes and read back with nanopb
-    ByteString protobuf_bytes = ProtobufSerialize(protobuf_msg);
-    StringReader reader(protobuf_bytes);
+    StringReader reader(nanopb_bytes);
     auto nanopb_msg =
         Message<firestore_client_MaybeDocument>::TryParse(&reader);
 
@@ -299,14 +295,10 @@ class LocalSerializerTest : public ::testing::Test {
 
   void ExpectRoundTrip(const MutationBatch& expected,
                        const Message<firestore_client_WriteBatch>& proto) {
-    // Convert nanopb to bytes and read back with Protobuf
+    // Convert nanopb to bytes and read back. We don't use Protobuf here
+    // since round-tripping through Protobuf does not maintain map field order
     ByteString nanopb_bytes = MakeByteString(proto);
-    auto protobuf_msg =
-        ProtobufParse<::firestore::client::WriteBatch>(nanopb_bytes);
-
-    // Convert Protobuf to bytes and read back with nanopb
-    ByteString protobuf_bytes = ProtobufSerialize(protobuf_msg);
-    StringReader reader(protobuf_bytes);
+    StringReader reader(nanopb_bytes);
     auto nanopb_msg = Message<firestore_client_WriteBatch>::TryParse(&reader);
 
     MutationBatch actual = serializer.DecodeMutationBatch(&reader, *nanopb_msg);
@@ -449,12 +441,13 @@ TEST_F(LocalSerializerTest, EncodesMutationBatch) {
 
   MutationBatch model(42, write_time_, {base}, {set, patch, del});
 
-  google_firestore_v1_Write base_proto;
+  google_firestore_v1_Write base_proto{};
   base_proto.which_operation = google_firestore_v1_Write_update_tag;
   base_proto.update.name =
       MakeBytesArray("projects/p/databases/d/documents/docs/1");
   SetRepeatedField(&base_proto.update.fields, &base_proto.update.fields_count,
                    Map("a", "b"));
+  base_proto.has_update_mask = true;
   SetRepeatedField(&base_proto.update_mask.field_paths,
                    &base_proto.update_mask.field_paths_count,
                    {MakeBytesArray("a")});
@@ -483,6 +476,7 @@ TEST_F(LocalSerializerTest, EncodesDocumentAsMaybeDocument) {
       MakeBytesArray("projects/p/databases/d/documents/some/path");
   SetRepeatedField(&maybe_doc_proto->document.fields,
                    &maybe_doc_proto->document.fields_count, Map("foo", "bar"));
+  maybe_doc_proto->document.has_update_time = true;
   maybe_doc_proto->document.update_time.seconds = 0;
   maybe_doc_proto->document.update_time.nanos = 42000;
 
@@ -501,11 +495,11 @@ TEST_F(LocalSerializerTest, EncodesNoDocumentAsMaybeDocument) {
 
   Message<firestore_client_MaybeDocument> maybe_doc_proto;
   maybe_doc_proto->which_document_type =
-      firestore_client_MaybeDocument_document_tag;
-  maybe_doc_proto->document.name =
+      firestore_client_MaybeDocument_no_document_tag;
+  maybe_doc_proto->no_document.name =
       MakeBytesArray("projects/p/databases/d/documents/some/path");
-  maybe_doc_proto->document.update_time.seconds = 0;
-  maybe_doc_proto->document.update_time.nanos = 42000;
+  maybe_doc_proto->no_document.read_time.seconds = 0;
+  maybe_doc_proto->no_document.read_time.nanos = 42000;
 
   ExpectRoundTrip(no_doc, maybe_doc_proto);
 
@@ -521,11 +515,11 @@ TEST_F(LocalSerializerTest, EncodesUnknownDocumentAsMaybeDocument) {
 
   Message<firestore_client_MaybeDocument> maybe_doc_proto;
   maybe_doc_proto->which_document_type =
-      firestore_client_MaybeDocument_document_tag;
-  maybe_doc_proto->document.name =
+      firestore_client_MaybeDocument_unknown_document_tag;
+  maybe_doc_proto->unknown_document.name =
       MakeBytesArray("projects/p/databases/d/documents/some/path");
-  maybe_doc_proto->document.update_time.seconds = 0;
-  maybe_doc_proto->document.update_time.nanos = 42000;
+  maybe_doc_proto->unknown_document.version.seconds = 0;
+  maybe_doc_proto->unknown_document.version.nanos = 42000;
   maybe_doc_proto->has_committed_mutations = true;
 
   ExpectRoundTrip(unknown_doc, maybe_doc_proto);
@@ -548,7 +542,6 @@ TEST_F(LocalSerializerTest, EncodesTargetData) {
   expected->target_id = target_id;
   expected->last_listen_sequence_number = sequence_number;
   expected->snapshot_version.nanos = 1039000;
-  expected->snapshot_version.nanos = 1000000;
   expected->resume_token =
       MakeBytesArray(resume_token.data(), resume_token.size());
 
@@ -642,7 +635,7 @@ TEST_F(LocalSerializerTest, EncodesNamedQuery) {
   NamedQuery named_query("query-1", bundle_query, SnapshotVersion(now));
 
   // Constructing expected proto lite class.
-  firestore_BundledQuery expected_bundled_query;
+  firestore_BundledQuery expected_bundled_query{};
   expected_bundled_query.parent =
       MakeBytesArray("projects/p/databases/d/documents");
   expected_bundled_query.limit_type = firestore_BundledQuery_LimitType_FIRST;
@@ -653,7 +646,7 @@ TEST_F(LocalSerializerTest, EncodesNamedQuery) {
       expected_bundled_query.structured_query;
 
   google_firestore_v1_StructuredQuery_CollectionSelector from{};
-  from.collection_id = MakeBytesArray("room");
+  from.collection_id = MakeBytesArray("a");
   SetRepeatedField(&query.from, &query.from_count, {from});
 
   query.where.which_filter_type =
@@ -690,7 +683,7 @@ TEST_F(LocalSerializerTest, EncodesNamedLimitToLastQuery) {
   NamedQuery named_query("query-1", bundle_query, SnapshotVersion(now));
 
   // Constructing expected proto.
-  firestore_BundledQuery expected_bundled_query;
+  firestore_BundledQuery expected_bundled_query{};
   expected_bundled_query.parent =
       MakeBytesArray("projects/p/databases/d/documents");
   expected_bundled_query.limit_type = firestore_BundledQuery_LimitType_LAST;
@@ -699,10 +692,11 @@ TEST_F(LocalSerializerTest, EncodesNamedLimitToLastQuery) {
       firestore_BundledQuery_structured_query_tag;
   google_firestore_v1_StructuredQuery& query =
       expected_bundled_query.structured_query;
+  query.has_limit = true;
   query.limit.value = 3;
 
   google_firestore_v1_StructuredQuery_CollectionSelector from{};
-  from.collection_id = MakeBytesArray("room");
+  from.collection_id = MakeBytesArray("a");
   SetRepeatedField(&query.from, &query.from_count, {from});
 
   google_firestore_v1_StructuredQuery_Order order_by{};
