@@ -76,8 +76,11 @@ using model::TargetId;
 using nanopb::ByteString;
 using nanopb::ByteStringWriter;
 using nanopb::FreeNanopbMessage;
+using nanopb::MakeBytesArray;
 using nanopb::MakeStdString;
 using nanopb::Message;
+using nanopb::ProtobufParse;
+using nanopb::ProtobufSerialize;
 using nanopb::StringReader;
 using nanopb::Writer;
 using testutil::DeletedDoc;
@@ -105,28 +108,17 @@ class LocalSerializerTest : public ::testing::Test {
 
   Timestamp write_time_ = Timestamp::Now();
 
-  template <typename... Args>
-  void ExpectRoundTrip(const Args&... args) {
-    // First, serialize model with our (nanopb based) serializer, then
-    // deserialize the resulting bytes with libprotobuf and ensure the result is
-    // the same as the expected proto.
-    ExpectSerializationRoundTrip(args...);
-
-    // Next, serialize proto with libprotobuf, then deserialize the resulting
-    // bytes with our (nanopb based) deserializer and ensure the result is the
-    // same as the expected model.
-    ExpectDeserializationRoundTrip(args...);
-  }
-
   static google_firestore_v1_Write SetProto() {
     google_firestore_v1_Write set_proto{};
     set_proto.which_operation = google_firestore_v1_Write_update_tag;
     set_proto.update.name =
-        nanopb::MakeBytesArray("projects/p/databases/d/documents/docs/1");
+        MakeBytesArray("projects/p/databases/d/documents/docs/1");
     set_proto.update.fields_count = 2;
-    set_proto.update.fields[0].key = nanopb::MakeBytesArray("a");
+    set_proto.update.fields =
+        nanopb::MakeArray<google_firestore_v1_Document_FieldsEntry>(2);
+    set_proto.update.fields[0].key = MakeBytesArray("a");
     set_proto.update.fields[0].value = Value("b");
-    set_proto.update.fields[1].key = nanopb::MakeBytesArray("num");
+    set_proto.update.fields[1].key = MakeBytesArray("num");
     set_proto.update.fields[1].value = Value("1");
     return set_proto;
   }
@@ -136,7 +128,7 @@ class LocalSerializerTest : public ::testing::Test {
     patch_proto.update_mask.field_paths_count = 1;
     patch_proto.update_mask.field_paths =
         nanopb::MakeArray<pb_bytes_array_t*>(1);
-    patch_proto.update_mask.field_paths[0] = nanopb::MakeBytesArray("a");
+    patch_proto.update_mask.field_paths[0] = MakeBytesArray("a");
     patch_proto.current_document.which_condition_type =
         google_firestore_v1_Precondition_exists_tag;
     patch_proto.current_document.exists = true;
@@ -147,7 +139,7 @@ class LocalSerializerTest : public ::testing::Test {
     google_firestore_v1_Write delete_proto{};
     delete_proto.which_operation = google_firestore_v1_Write_delete_tag;
     delete_proto.delete_ =
-        nanopb::MakeBytesArray("projects/p/databases/d/documents/docs/1");
+        MakeBytesArray("projects/p/databases/d/documents/docs/1");
     return delete_proto;
   }
 
@@ -155,11 +147,11 @@ class LocalSerializerTest : public ::testing::Test {
     google_firestore_v1_Write transform_proto{};
 
     google_firestore_v1_DocumentTransform_FieldTransform inc_proto1;
-    inc_proto1.field_path = nanopb::MakeBytesArray("integer");
+    inc_proto1.field_path = MakeBytesArray("integer");
     inc_proto1.increment = Value(42);
 
     google_firestore_v1_DocumentTransform_FieldTransform inc_proto2;
-    inc_proto2.field_path = nanopb::MakeBytesArray("double");
+    inc_proto2.field_path = MakeBytesArray("double");
     inc_proto2.increment = Value(13.37);
 
     transform_proto.which_operation = google_firestore_v1_Write_transform_tag;
@@ -174,7 +166,7 @@ class LocalSerializerTest : public ::testing::Test {
         google_firestore_v1_Precondition_exists_tag;
     transform_proto.current_document.exists = true;
     transform_proto.transform.document =
-        nanopb::MakeBytesArray("projects/p/databases/d/documents/docs/1");
+        MakeBytesArray("projects/p/databases/d/documents/docs/1");
     return transform_proto;
   }
 
@@ -235,108 +227,73 @@ class LocalSerializerTest : public ::testing::Test {
     EXPECT_EQ(0, encoded.update_transforms_count);
   }
 
- private:
-  void ExpectSerializationRoundTrip(
-      const MutableDocument& model,
-      const ::firestore::client::MaybeDocument& proto) {
-    ByteString bytes = EncodeMaybeDocument(&serializer, model);
-    auto actual = ProtobufParse<::firestore::client::MaybeDocument>(bytes);
-    EXPECT_TRUE(msg_diff.Compare(proto, actual)) << message_differences;
-  }
+  void ExpectRoundTrip(const MutableDocument& expected,
+                       const Message<firestore_client_MaybeDocument>& proto) {
+    // Convert nanopb to bytes and read back with Protobuf
+    ByteString nanopb_bytes = MakeByteString(proto);
+    auto protobuf_msg =
+        ProtobufParse<::firestore::client::WriteBatch>(nanopb_bytes);
 
-  void ExpectDeserializationRoundTrip(
-      const MutableDocument& model,
-      const ::firestore::client::MaybeDocument& proto) {
-    std::string bytes = MakeStdString(proto);
-    StringReader reader(bytes);
-    auto message = Message<firestore_client_MaybeDocument>::TryParse(&reader);
-    auto actual_model = serializer.DecodeMaybeDocument(&reader, *message);
+    // Convert Protobuf to bytes and read back with nanopb
+    ByteString protobuf_bytes = ProtobufSerialize(protobuf_msg);
+    StringReader reader(protobuf_bytes);
+    auto nanopb_msg =
+        Message<firestore_client_MaybeDocument>::TryParse(&reader);
+
+    MutableDocument actual =
+        serializer.DecodeMaybeDocument(&reader, *nanopb_msg);
     EXPECT_OK(reader.status());
-    EXPECT_EQ(model, actual_model);
+    EXPECT_EQ(expected, actual);
   }
 
-  ByteString EncodeMaybeDocument(local::LocalSerializer* localSerializer,
-                                 const MutableDocument& document) {
-    return MakeByteString(localSerializer->EncodeMaybeDocument(document));
-  }
+  void ExpectRoundTrip(const TargetData& expected,
+                       const Message<firestore_client_Target>& proto) {
+    // Convert nanopb to bytes and read back with Protobuf
+    ByteString nanopb_bytes = MakeByteString(proto);
+    auto protobuf_msg =
+        ProtobufParse<::firestore::client::Target>(nanopb_bytes);
 
-  void ExpectSerializationRoundTrip(const TargetData& target_data,
-                                    const ::firestore::client::Target& proto) {
-    ByteString bytes = EncodeTargetData(&serializer, target_data);
-    auto actual = ProtobufParse<::firestore::client::Target>(bytes);
-    EXPECT_TRUE(msg_diff.Compare(proto, actual)) << message_differences;
-  }
+    // Convert Protobuf to bytes and read back with nanopb
+    ByteString protobuf_bytes = ProtobufSerialize(protobuf_msg);
+    StringReader reader(protobuf_bytes);
+    auto nanopb_msg = Message<firestore_client_Target>::TryParse(&reader);
 
-  void ExpectDeserializationRoundTrip(
-      const TargetData& target_data, const ::firestore::client::Target& proto) {
-    ByteString bytes = ProtobufSerialize(proto);
-    StringReader reader(bytes);
-
-    auto message = Message<firestore_client_Target>::TryParse(&reader);
-    TargetData actual_target_data =
-        serializer.DecodeTargetData(&reader, *message);
-
+    TargetData actual = serializer.DecodeTargetData(&reader, *nanopb_msg);
     EXPECT_OK(reader.status());
-    EXPECT_EQ(target_data, actual_target_data);
+    EXPECT_EQ(expected, actual);
   }
 
-  ByteString EncodeTargetData(local::LocalSerializer* localSerializer,
-                              const TargetData& target_data) {
-    EXPECT_EQ(target_data.purpose(), QueryPurpose::Listen);
-    return MakeByteString(localSerializer->EncodeTargetData(target_data));
-  }
+  void ExpectRoundTrip(const MutationBatch& expected,
+                       const Message<firestore_client_WriteBatch>& proto) {
+    // Convert nanopb to bytes and read back with Protobuf
+    ByteString nanopb_bytes = MakeByteString(proto);
+    auto protobuf_msg =
+        ProtobufParse<::firestore::client::WriteBatch>(nanopb_bytes);
 
-  void ExpectSerializationRoundTrip(
-      const MutationBatch& model,
-      const Message<firestore_client_WriteBatch>& proto) {
-    ByteString bytes = EncodeMutationBatch(&serializer, model);
-    auto actual = ProtobufParse<::firestore::client::WriteBatch>(bytes);
-    EXPECT_TRUE(msg_diff.Compare(proto, actual)) << message_differences;
-  }
+    // Convert Protobuf to bytes and read back with nanopb
+    ByteString protobuf_bytes = ProtobufSerialize(protobuf_msg);
+    StringReader reader(protobuf_bytes);
+    auto nanopb_msg = Message<firestore_client_WriteBatch>::TryParse(&reader);
 
-  void ExpectDeserializationRoundTrip(
-      const MutationBatch& model,
-      const Message<firestore_client_WriteBatch>& proto) {
-    std::string bytes = MakeStdString(proto);
-    StringReader reader(bytes);
-
-    auto message = Message<firestore_client_WriteBatch>::TryParse(&reader);
-    MutationBatch actual_mutation_batch =
-        serializer.DecodeMutationBatch(&reader, *message);
-
+    MutationBatch actual = serializer.DecodeMutationBatch(&reader, *nanopb_msg);
     EXPECT_OK(reader.status());
-    EXPECT_EQ(model, actual_mutation_batch);
+    EXPECT_EQ(expected, actual);
   }
 
-  ByteString EncodeMutationBatch(local::LocalSerializer* localSerializer,
-                                 const MutationBatch& mutation_batch) {
-    return MakeByteString(localSerializer->EncodeMutationBatch(mutation_batch));
-  }
+  void ExpectRoundTrip(const NamedQuery& expected,
+                       const Message<firestore_NamedQuery>& proto) {
+    // Convert nanopb to bytes and read back with Protobuf
+    ByteString nanopb_bytes = MakeByteString(proto);
+    auto protobuf_msg = ProtobufParse<::firestore::NamedQuery>(nanopb_bytes);
 
-  void ExpectSerializationRoundTrip(const NamedQuery& named_query,
-                                    const ::firestore::NamedQuery& proto) {
-    ByteString bytes = EncodeNamedQuery(&serializer, named_query);
-    auto actual = ProtobufParse<::firestore::NamedQuery>(bytes);
-    EXPECT_TRUE(msg_diff.Compare(proto, actual)) << message_differences;
-  }
+    // Convert Protobuf to bytes and read back with nanopb
+    ByteString protobuf_bytes = ProtobufSerialize(protobuf_msg);
+    StringReader reader(protobuf_bytes);
+    auto nanopb_msg = Message<firestore_NamedQuery>::TryParse(&reader);
 
-  ByteString EncodeNamedQuery(local::LocalSerializer* serializer,
-                              const NamedQuery& named_query) {
-    return MakeByteString(serializer->EncodeNamedQuery(named_query));
-  }
-
-  void ExpectDeserializationRoundTrip(
-      const NamedQuery& named_query,
-      const Message<firestore_NamedQuery>& proto) {
-    std::string bytes = MakeStdString(proto);
-    StringReader reader(bytes);
-
-    auto message = Message<firestore_NamedQuery>::TryParse(&reader);
-    NamedQuery actual_named_query =
-        serializer.DecodeNamedQuery(&reader, *message);
-
+    NamedQuery actual = serializer.DecodeNamedQuery(&reader, *nanopb_msg);
     EXPECT_OK(reader.status());
-    EXPECT_EQ(named_query, actual_named_query);
+    EXPECT_EQ(expected, actual);
   }
 
   std::string message_differences;
@@ -474,11 +431,11 @@ TEST_F(LocalSerializerTest, EncodesMutationBatch) {
   google_firestore_v1_Write base_proto{};
   base_proto.which_operation = google_firestore_v1_Write_update_tag;
   base_proto.update.name =
-      nanopb::MakeBytesArray("projects/p/databases/d/documents/docs/1");
+      MakeBytesArray("projects/p/databases/d/documents/docs/1");
   base_proto.update.fields_count = 1;
-  base_proto.update.fields[0].key = nanopb::MakeBytesArray("a");
+  base_proto.update.fields[0].key = MakeBytesArray("a");
   base_proto.update.fields[0].value = Value("b");
-  base_proto.update_mask.field_paths[0] = nanopb::MakeBytesArray("a");
+  base_proto.update_mask.field_paths[0] = MakeBytesArray("a");
   base_proto.current_document.which_condition_type =
       google_firestore_v1_Precondition_exists_tag;
   base_proto.current_document.exists = true;
@@ -486,70 +443,80 @@ TEST_F(LocalSerializerTest, EncodesMutationBatch) {
   firestore_client_WriteBatch batch_proto{};
   batch_proto.batch_id = 42;
   batch_proto.base_writes_count = 1;
-  batch_proto.base_writes = nanopb::MakeArray<google_firestore_v1_Write>(1)
-                                batch_proto.base_writes[0] = base_proto;
+  batch_proto.base_writes = nanopb::MakeArray<google_firestore_v1_Write>(1);
+  batch_proto.base_writes[0] = base_proto;
   batch_proto.writes = nanopb::MakeArray<google_firestore_v1_Write>(2);
   batch_proto.writes[0] = SetProto();
   batch_proto.writes[1] = PatchProto();
   batch_proto.writes[2] = DeleteProto();
   batch_proto.local_write_time = WriteTimeProto();
 
-  ExpectRoundTrip(model, batch_proto);
+  auto message = Message<firestore_client_WriteBatch>{batch_proto};
+  ExpectRoundTrip(model, message);
 }
 
 TEST_F(LocalSerializerTest, EncodesDocumentAsMaybeDocument) {
   MutableDocument doc = Doc("some/path", /*version=*/42, Map("foo", "bar"));
 
-  ::firestore::client::MaybeDocument maybe_doc_proto;
-  maybe_doc_proto.mutable_document()->set_name(
-      "projects/p/databases/d/documents/some/path");
-  ::google::firestore::v1::Value value_proto;
-  value_proto.set_string_value("bar");
-  maybe_doc_proto.mutable_document()->mutable_fields()->insert(
-      {"foo", value_proto});
-  maybe_doc_proto.mutable_document()->mutable_update_time()->set_seconds(0);
-  maybe_doc_proto.mutable_document()->mutable_update_time()->set_nanos(42000);
+  firestore_client_MaybeDocument maybe_doc_proto;
+  maybe_doc_proto.which_document_type =
+      firestore_client_MaybeDocument_document_tag;
+  maybe_doc_proto.document.name =
+      MakeBytesArray("projects/p/databases/d/documents/some/path");
+  maybe_doc_proto.document.fields_count = 1;
+  maybe_doc_proto.document.fields =
+      nanopb::MakeArray<google_firestore_v1_Document_FieldsEntry>(2);
+  maybe_doc_proto.document.fields[0].key = MakeBytesArray("foo");
+  maybe_doc_proto.document.fields[0].value = Value("bar");
+  maybe_doc_proto.document.update_time.seconds = 0;
+  maybe_doc_proto.document.update_time.nanos = 42000;
 
-  ExpectRoundTrip(doc, maybe_doc_proto);
+  auto message = Message<firestore_client_MaybeDocument>{maybe_doc_proto};
+  ExpectRoundTrip(doc, message);
 
   // Verify has_committed_mutations
   doc = Doc("some/path", /*version=*/42, Map("foo", "bar"))
             .SetHasCommittedMutations();
-  maybe_doc_proto.set_has_committed_mutations(true);
+  message->has_committed_mutations = true;
 
-  ExpectRoundTrip(doc, maybe_doc_proto);
+  ExpectRoundTrip(doc, message);
 }
 
 TEST_F(LocalSerializerTest, EncodesNoDocumentAsMaybeDocument) {
   MutableDocument no_doc = DeletedDoc("some/path", /*version=*/42);
 
-  ::firestore::client::MaybeDocument maybe_doc_proto;
-  maybe_doc_proto.mutable_no_document()->set_name(
-      "projects/p/databases/d/documents/some/path");
-  maybe_doc_proto.mutable_no_document()->mutable_read_time()->set_seconds(0);
-  maybe_doc_proto.mutable_no_document()->mutable_read_time()->set_nanos(42000);
+  firestore_client_MaybeDocument maybe_doc_proto;
+  maybe_doc_proto.which_document_type =
+      firestore_client_MaybeDocument_document_tag;
+  maybe_doc_proto.document.name =
+      MakeBytesArray("projects/p/databases/d/documents/some/path");
+  maybe_doc_proto.document.update_time.seconds = 0;
+  maybe_doc_proto.document.update_time.nanos = 42000;
 
-  ExpectRoundTrip(no_doc, maybe_doc_proto);
+  auto message = Message<firestore_client_MaybeDocument>{maybe_doc_proto};
+  ExpectRoundTrip(no_doc, message);
 
   // Verify has_committed_mutations
   no_doc = DeletedDoc("some/path", /*version=*/42).SetHasCommittedMutations();
-  maybe_doc_proto.set_has_committed_mutations(true);
+  maybe_doc_proto.has_committed_mutations = true;
 
-  ExpectRoundTrip(no_doc, maybe_doc_proto);
+  ExpectRoundTrip(no_doc, message);
 }
 
 TEST_F(LocalSerializerTest, EncodesUnknownDocumentAsMaybeDocument) {
   MutableDocument unknown_doc = UnknownDoc("some/path", /*version=*/42);
 
-  ::firestore::client::MaybeDocument maybe_doc_proto;
-  maybe_doc_proto.mutable_unknown_document()->set_name(
-      "projects/p/databases/d/documents/some/path");
-  maybe_doc_proto.mutable_unknown_document()->mutable_version()->set_seconds(0);
-  maybe_doc_proto.mutable_unknown_document()->mutable_version()->set_nanos(
-      42000);
-  maybe_doc_proto.set_has_committed_mutations(true);
+  firestore_client_MaybeDocument maybe_doc_proto;
+  maybe_doc_proto.which_document_type =
+      firestore_client_MaybeDocument_document_tag;
+  maybe_doc_proto.document.name =
+      MakeBytesArray("projects/p/databases/d/documents/some/path");
+  maybe_doc_proto.document.update_time.seconds = 0;
+  maybe_doc_proto.document.update_time.nanos = 42000;
+  maybe_doc_proto.has_committed_mutations = true;
 
-  ExpectRoundTrip(unknown_doc, maybe_doc_proto);
+  auto message = Message<firestore_client_MaybeDocument>{maybe_doc_proto};
+  ExpectRoundTrip(unknown_doc, message);
 }
 
 TEST_F(LocalSerializerTest, EncodesTargetData) {
@@ -565,53 +532,72 @@ TEST_F(LocalSerializerTest, EncodesTargetData) {
                          SnapshotVersion(limbo_free_version),
                          ByteString(resume_token));
 
-  ::firestore::client::Target expected;
-  expected.set_target_id(target_id);
-  expected.set_last_listen_sequence_number(sequence_number);
-  expected.mutable_snapshot_version()->set_nanos(1039000);
-  expected.mutable_last_limbo_free_snapshot_version()->set_nanos(1000000);
-  expected.set_resume_token(resume_token.data(), resume_token.size());
-  v1::Target::QueryTarget* query_proto = expected.mutable_query();
+  firestore_client_Target expected;
+  expected.target_id = target_id;
+  expected.last_listen_sequence_number = sequence_number;
+  expected.snapshot_version.nanos = 1039000;
+  expected.snapshot_version.nanos = 1000000;
+  expected.resume_token =
+      MakeBytesArray(resume_token.data(), resume_token.size());
+
+  expected.which_target_type = firestore_client_Target_query_tag;
+  google_firestore_v1_Target_QueryTarget& query_proto = expected.query;
 
   // Add expected collection.
-  query_proto->set_parent("projects/p/databases/d/documents");
-  v1::StructuredQuery::CollectionSelector from;
-  from.set_collection_id("room");
-  *query_proto->mutable_structured_query()->add_from() = std::move(from);
+  query_proto.parent = MakeBytesArray("projects/p/databases/d/documents");
+  query_proto.which_query_type =
+      google_firestore_v1_Target_QueryTarget_structured_query_tag;
+  query_proto.structured_query.from_count = 1;
+  query_proto.structured_query.from =
+      nanopb::MakeArray<google_firestore_v1_StructuredQuery_CollectionSelector>(
+          1);
+  query_proto.structured_query.from[0].collection_id = MakeBytesArray("room");
 
   // Add default order_by.
-  v1::StructuredQuery::Order order;
-  order.mutable_field()->set_field_path(FieldPath::kDocumentKeyPath);
-  order.set_direction(v1::StructuredQuery::ASCENDING);
-  *query_proto->mutable_structured_query()->add_order_by() = std::move(order);
+  query_proto.structured_query.order_by_count = 1;
+  query_proto.structured_query.order_by =
+      nanopb::MakeArray<google_firestore_v1_StructuredQuery_Order>(1);
+  query_proto.structured_query.order_by[0].field.field_path =
+      MakeBytesArray(FieldPath::kDocumentKeyPath);
+  query_proto.structured_query.order_by[0].direction =
+      google_firestore_v1_StructuredQuery_Direction_ASCENDING;
 
-  ExpectRoundTrip(target_data, expected);
+  auto message = Message<firestore_client_Target>{expected};
+  ExpectRoundTrip(target_data, message);
 }
 
 TEST_F(LocalSerializerTest, HandlesInvalidTargetData) {
   TargetId target_id = 42;
   std::string invalid_field_path = "`";
 
-  ::firestore::client::Target invalid_target;
-  invalid_target.set_target_id(target_id);
-  v1::Target::QueryTarget* query_proto = invalid_target.mutable_query();
+  firestore_client_Target invalid_target;
+  invalid_target.target_id = target_id;
 
   // Add expected collection.
-  query_proto->set_parent("projects/p/databases/d/documents");
-  v1::StructuredQuery::CollectionSelector from;
-  from.set_collection_id("room");
-  *query_proto->mutable_structured_query()->add_from() = std::move(from);
+  invalid_target.which_target_type = firestore_client_Target_query_tag;
+  google_firestore_v1_Target_QueryTarget& query_proto = invalid_target.query;
+  query_proto.which_query_type =
+      google_firestore_v1_Target_QueryTarget_structured_query_tag;
+  query_proto.structured_query.from_count = 1;
+  query_proto.structured_query.from =
+      nanopb::MakeArray<google_firestore_v1_StructuredQuery_CollectionSelector>(
+          1);
+  query_proto.structured_query.from[0].collection_id = MakeBytesArray("room");
 
   // Add invalid order_by.
-  v1::StructuredQuery::Order order;
-  order.mutable_field()->set_field_path(invalid_field_path);
-  order.set_direction(v1::StructuredQuery::ASCENDING);
-  *query_proto->mutable_structured_query()->add_order_by() = std::move(order);
+  query_proto.structured_query.order_by_count = 1;
+  query_proto.structured_query.order_by =
+      nanopb::MakeArray<google_firestore_v1_StructuredQuery_Order>(1);
+  query_proto.structured_query.order_by[0].field.field_path =
+      MakeBytesArray(invalid_field_path);
+  query_proto.structured_query.order_by[0].direction =
+      google_firestore_v1_StructuredQuery_Direction_ASCENDING;
 
-  ByteString bytes = ProtobufSerialize(invalid_target);
+  auto message = Message<firestore_client_Target>{invalid_target};
+  ByteString bytes = MakeByteString(message);
   StringReader reader(bytes);
 
-  auto message = Message<firestore_client_Target>::TryParse(&reader);
+  message = Message<firestore_client_Target>::TryParse(&reader);
   serializer.DecodeTargetData(&reader, *message);
   EXPECT_NOT_OK(reader.status());
 }
