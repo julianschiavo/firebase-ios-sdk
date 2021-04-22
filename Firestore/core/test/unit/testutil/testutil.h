@@ -103,7 +103,7 @@ template <typename T>
 EnableForInts<T, google_firestore_v1_Value> Value(T value) {
   google_firestore_v1_Value result{};
   result.which_value_type = google_firestore_v1_Value_integer_value_tag;
-  result.boolean_value = value;
+  result.integer_value = value;
   return result;
 }
 

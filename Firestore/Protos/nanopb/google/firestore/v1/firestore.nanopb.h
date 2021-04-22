@@ -114,7 +114,7 @@ typedef struct _google_firestore_v1_RollbackRequest {
 
 typedef struct _google_firestore_v1_Target_DocumentsTarget {
     pb_size_t documents_count;
-    nanopb:: **documents;
+    pb_bytes_array_t **documents;
 
     std::string ToString(int indent = 0) const;
 /* @@protoc_insertion_point(struct:google_firestore_v1_Target_DocumentsTarget) */

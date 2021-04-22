@@ -120,15 +120,17 @@ class LocalSerializerTest : public ::testing::Test {
     set_proto.update.fields[0].key = MakeBytesArray("a");
     set_proto.update.fields[0].value = Value("b");
     set_proto.update.fields[1].key = MakeBytesArray("num");
-    set_proto.update.fields[1].value = Value("1");
+    set_proto.update.fields[1].value = Value(1);
     return set_proto;
   }
 
   static google_firestore_v1_Write PatchProto() {
     google_firestore_v1_Write patch_proto = SetProto();
+    patch_proto.has_update_mask=true;
     patch_proto.update_mask.field_paths_count = 1;
     patch_proto.update_mask.field_paths = MakeArray<pb_bytes_array_t*>(1);
     patch_proto.update_mask.field_paths[0] = MakeBytesArray("a");
+    patch_proto.has_current_document=true;
     patch_proto.current_document.which_condition_type =
         google_firestore_v1_Precondition_exists_tag;
     patch_proto.current_document.exists = true;
@@ -148,10 +150,12 @@ class LocalSerializerTest : public ::testing::Test {
 
     google_firestore_v1_DocumentTransform_FieldTransform inc_proto1;
     inc_proto1.field_path = MakeBytesArray("integer");
+    inc_proto1.which_transform_type=google_firestore_v1_DocumentTransform_FieldTransform_increment_tag;
     inc_proto1.increment = Value(42);
 
     google_firestore_v1_DocumentTransform_FieldTransform inc_proto2;
     inc_proto2.field_path = MakeBytesArray("double");
+    inc_proto2.which_transform_type=google_firestore_v1_DocumentTransform_FieldTransform_increment_tag;
     inc_proto2.increment = Value(13.37);
 
     transform_proto.which_operation = google_firestore_v1_Write_transform_tag;
@@ -303,6 +307,7 @@ class LocalSerializerTest : public ::testing::Test {
 TEST_F(LocalSerializerTest, SetMutationAndTransformMutationAreSquashed) {
   Message<firestore_client_WriteBatch> batch_proto;
   batch_proto->batch_id = 42;
+  batch_proto->writes_count = 2;
   batch_proto->writes = MakeArray<google_firestore_v1_Write>(2);
   batch_proto->writes[0] = SetProto();
   batch_proto->writes[1] = LegacyTransformProto();
@@ -325,6 +330,7 @@ TEST_F(LocalSerializerTest, SetMutationAndTransformMutationAreSquashed) {
 TEST_F(LocalSerializerTest, PatchMutationAndTransformMutationAreSquashed) {
   Message<firestore_client_WriteBatch> batch_proto;
   batch_proto->batch_id = 42;
+          batch_proto->writes_count = 2;
   batch_proto->writes = MakeArray<google_firestore_v1_Write>(2);
   batch_proto->writes[0] = PatchProto();
   batch_proto->writes[1] = LegacyTransformProto();
@@ -347,6 +353,7 @@ TEST_F(LocalSerializerTest, PatchMutationAndTransformMutationAreSquashed) {
 TEST_F(LocalSerializerTest, TransformAndTransformThrowError) {
   Message<firestore_client_WriteBatch> batch_proto;
   batch_proto->batch_id = 42;
+          batch_proto->writes_count = 2;
   batch_proto->writes = MakeArray<google_firestore_v1_Write>(2);
   batch_proto->writes[0] = LegacyTransformProto();
   batch_proto->writes[1] = LegacyTransformProto();
@@ -362,6 +369,7 @@ TEST_F(LocalSerializerTest, TransformAndTransformThrowError) {
 TEST_F(LocalSerializerTest, DeleteAndTransformThrowError) {
   Message<firestore_client_WriteBatch> batch_proto;
   batch_proto->batch_id = 42;
+          batch_proto->writes_count = 2;
   batch_proto->writes = MakeArray<google_firestore_v1_Write>(2);
   batch_proto->writes[0] = DeleteProto();
   batch_proto->writes[1] = LegacyTransformProto();
@@ -377,6 +385,7 @@ TEST_F(LocalSerializerTest, DeleteAndTransformThrowError) {
 TEST_F(LocalSerializerTest, MultipleMutationsAreSquashed) {
   Message<firestore_client_WriteBatch> batch_proto{};
   batch_proto->batch_id = 42;
+          batch_proto->writes_count = 7;
   batch_proto->writes = MakeArray<google_firestore_v1_Write>(7);
   batch_proto->writes[0] = SetProto();
   batch_proto->writes[1] = SetProto();
@@ -642,7 +651,7 @@ TEST_F(LocalSerializerTest, EncodesNamedQuery) {
 
   query.where.which_filter_type =
       google_firestore_v1_StructuredQuery_Filter_field_filter_tag;
-  query.where.field_filter.field = MakeBytesArray("foo");
+  query.where.field_filter.field.field_path = MakeBytesArray("foo");
   query.where.field_filter.value = Value(1);
   query.where.field_filter.op =
       google_firestore_v1_StructuredQuery_FieldFilter_Operator_EQUAL;
