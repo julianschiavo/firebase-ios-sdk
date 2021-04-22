@@ -179,6 +179,32 @@ class LocalSerializerTest : public ::testing::Test {
     write_time_proto.nanos = write_time_.nanoseconds();
     return write_time_proto;
   }
+  
+  template <typename T>
+    void SetRepeatedField(T **fields_array, pb_size_t *fields_count,
+                          std::initializer_list<T> fields) {
+
+*fields_array=MakeArray<T>(static_cast<pb_size_t>(fields.size()));
+*fields_count=static_cast<pb_size_t>(fields.size());
+auto* current=*fields_array;
+for (const auto& field:fields) {
+  *current=field;
+  ++current;
+}
+    }
+
+    template <typename T>
+    void SetRepeatedField(T **fields_array, pb_size_t *fields_count,
+                          google_firestore_v1_Value map_value) {
+HARD_ASSERT(map_value.which_value_type==google_firestore_v1_Value_map_value_tag, "Expected a Map");
+      google_firestore_v1_MapValue &map = map_value.map_value;
+      *fields_array=MakeArray<T>(map.fields_count);
+      *fields_count= map.fields_count;
+      for (pb_size_t i=0; i < map.fields_count; ++i){
+        (*fields_array)[i].key= map.fields[i].key;
+        (*fields_array)[i].value= map.fields[i].value;
+      }
+    }
 
   static void ExpectSet(google_firestore_v1_Write encoded) {
     EXPECT_EQ(google_firestore_v1_Write_update_tag, encoded.which_operation);
@@ -307,10 +333,7 @@ class LocalSerializerTest : public ::testing::Test {
 TEST_F(LocalSerializerTest, SetMutationAndTransformMutationAreSquashed) {
   Message<firestore_client_WriteBatch> batch_proto;
   batch_proto->batch_id = 42;
-  batch_proto->writes_count = 2;
-  batch_proto->writes = MakeArray<google_firestore_v1_Write>(2);
-  batch_proto->writes[0] = SetProto();
-  batch_proto->writes[1] = LegacyTransformProto();
+          SetRepeatedField(&batch_proto->writes,&batch_proto->writes_count,{SetProto(), LegacyTransformProto()});
   batch_proto->local_write_time = WriteTimeProto();
 
   std::string bytes = MakeStdString(batch_proto);
@@ -330,10 +353,7 @@ TEST_F(LocalSerializerTest, SetMutationAndTransformMutationAreSquashed) {
 TEST_F(LocalSerializerTest, PatchMutationAndTransformMutationAreSquashed) {
   Message<firestore_client_WriteBatch> batch_proto;
   batch_proto->batch_id = 42;
-          batch_proto->writes_count = 2;
-  batch_proto->writes = MakeArray<google_firestore_v1_Write>(2);
-  batch_proto->writes[0] = PatchProto();
-  batch_proto->writes[1] = LegacyTransformProto();
+          SetRepeatedField(&batch_proto->writes,&batch_proto->writes_count,{PatchProto(), LegacyTransformProto()});
   batch_proto->local_write_time = WriteTimeProto();
 
   std::string bytes = MakeStdString(batch_proto);
@@ -353,10 +373,7 @@ TEST_F(LocalSerializerTest, PatchMutationAndTransformMutationAreSquashed) {
 TEST_F(LocalSerializerTest, TransformAndTransformThrowError) {
   Message<firestore_client_WriteBatch> batch_proto;
   batch_proto->batch_id = 42;
-          batch_proto->writes_count = 2;
-  batch_proto->writes = MakeArray<google_firestore_v1_Write>(2);
-  batch_proto->writes[0] = LegacyTransformProto();
-  batch_proto->writes[1] = LegacyTransformProto();
+          SetRepeatedField(&batch_proto->writes,&batch_proto->writes_count,{LegacyTransformProto(), LegacyTransformProto()});
   batch_proto->local_write_time = WriteTimeProto();
 
   std::string bytes = MakeStdString(batch_proto);
@@ -369,10 +386,7 @@ TEST_F(LocalSerializerTest, TransformAndTransformThrowError) {
 TEST_F(LocalSerializerTest, DeleteAndTransformThrowError) {
   Message<firestore_client_WriteBatch> batch_proto;
   batch_proto->batch_id = 42;
-          batch_proto->writes_count = 2;
-  batch_proto->writes = MakeArray<google_firestore_v1_Write>(2);
-  batch_proto->writes[0] = DeleteProto();
-  batch_proto->writes[1] = LegacyTransformProto();
+          SetRepeatedField(&batch_proto->writes,&batch_proto->writes_count,{DeleteProto(), LegacyTransformProto()});
   batch_proto->local_write_time = WriteTimeProto();
 
   std::string bytes = MakeStdString(batch_proto);
@@ -385,15 +399,7 @@ TEST_F(LocalSerializerTest, DeleteAndTransformThrowError) {
 TEST_F(LocalSerializerTest, MultipleMutationsAreSquashed) {
   Message<firestore_client_WriteBatch> batch_proto{};
   batch_proto->batch_id = 42;
-          batch_proto->writes_count = 7;
-  batch_proto->writes = MakeArray<google_firestore_v1_Write>(7);
-  batch_proto->writes[0] = SetProto();
-  batch_proto->writes[1] = SetProto();
-  batch_proto->writes[2] = LegacyTransformProto();
-  batch_proto->writes[3] = DeleteProto();
-  batch_proto->writes[4] = PatchProto();
-  batch_proto->writes[5] = LegacyTransformProto();
-  batch_proto->writes[6] = PatchProto();
+  SetRepeatedField(&batch_proto->writes,&batch_proto->writes_count,{ SetProto(), SetProto(), LegacyTransformProto(), DeleteProto(),PatchProto(), LegacyTransformProto(), PatchProto()});
   batch_proto->local_write_time = WriteTimeProto();
 
   std::string bytes = MakeStdString(batch_proto);
@@ -435,23 +441,16 @@ TEST_F(LocalSerializerTest, EncodesMutationBatch) {
   base_proto.which_operation = google_firestore_v1_Write_update_tag;
   base_proto.update.name =
       MakeBytesArray("projects/p/databases/d/documents/docs/1");
-  base_proto.update.fields_count = 1;
-  base_proto.update.fields[0].key = MakeBytesArray("a");
-  base_proto.update.fields[0].value = Value("b");
-  base_proto.update_mask.field_paths[0] = MakeBytesArray("a");
+          SetRepeatedField(&base_proto.update.fields,&base_proto.update.fields_count,Map("a", "b"));
+          SetRepeatedField(&  base_proto.update_mask.field_paths,&base_proto.update_mask.field_paths_count ,{MakeBytesArray("a")});
   base_proto.current_document.which_condition_type =
       google_firestore_v1_Precondition_exists_tag;
   base_proto.current_document.exists = true;
 
   Message<firestore_client_WriteBatch> batch_proto{};
   batch_proto->batch_id = 42;
-  batch_proto->base_writes_count = 1;
-  batch_proto->base_writes = MakeArray<google_firestore_v1_Write>(1);
-  batch_proto->base_writes[0] = base_proto;
-  batch_proto->writes = MakeArray<google_firestore_v1_Write>(2);
-  batch_proto->writes[0] = SetProto();
-  batch_proto->writes[1] = PatchProto();
-  batch_proto->writes[2] = DeleteProto();
+  SetRepeatedField( &batch_proto->base_writes,&batch_proto->base_writes_count,{base_proto});
+          SetRepeatedField( &batch_proto->writes,&batch_proto->writes_count,{SetProto(),PatchProto(),DeleteProto()});
   batch_proto->local_write_time = WriteTimeProto();
 
   ExpectRoundTrip(model, batch_proto);
@@ -465,11 +464,7 @@ TEST_F(LocalSerializerTest, EncodesDocumentAsMaybeDocument) {
       firestore_client_MaybeDocument_document_tag;
   maybe_doc_proto->document.name =
       MakeBytesArray("projects/p/databases/d/documents/some/path");
-  maybe_doc_proto->document.fields_count = 1;
-  maybe_doc_proto->document.fields =
-      MakeArray<google_firestore_v1_Document_FieldsEntry>(2);
-  maybe_doc_proto->document.fields[0].key = MakeBytesArray("foo");
-  maybe_doc_proto->document.fields[0].value = Value("bar");
+          SetRepeatedField(& maybe_doc_proto->document.fields,& maybe_doc_proto->document.fields_count,Map("foo", "bar"));
   maybe_doc_proto->document.update_time.seconds = 0;
   maybe_doc_proto->document.update_time.nanos = 42000;
 
@@ -546,19 +541,17 @@ TEST_F(LocalSerializerTest, EncodesTargetData) {
   query_proto.parent = MakeBytesArray("projects/p/databases/d/documents");
   query_proto.which_query_type =
       google_firestore_v1_Target_QueryTarget_structured_query_tag;
-  query_proto.structured_query.from_count = 1;
-  query_proto.structured_query.from =
-      MakeArray<google_firestore_v1_StructuredQuery_CollectionSelector>(1);
-  query_proto.structured_query.from[0].collection_id = MakeBytesArray("room");
+          google_firestore_v1_StructuredQuery_CollectionSelector from{};
+          from.collection_id= MakeBytesArray("room");
+          SetRepeatedField(&  query_proto.structured_query.from,&query_proto.structured_query.from_count ,{from});
 
   // Add default order_by.
-  query_proto.structured_query.order_by_count = 1;
-  query_proto.structured_query.order_by =
-      MakeArray<google_firestore_v1_StructuredQuery_Order>(1);
-  query_proto.structured_query.order_by[0].field.field_path =
-      MakeBytesArray(FieldPath::kDocumentKeyPath);
-  query_proto.structured_query.order_by[0].direction =
-      google_firestore_v1_StructuredQuery_Direction_ASCENDING;
+          google_firestore_v1_StructuredQuery_Order order_by{};
+          order_by.field.field_path =
+                  MakeBytesArray(FieldPath::kDocumentKeyPath);
+          order_by.direction =
+                  google_firestore_v1_StructuredQuery_Direction_ASCENDING;
+          SetRepeatedField(&  query_proto.structured_query.order_by,&query_proto.structured_query.order_by_count ,{order_by});
 
   ExpectRoundTrip(target_data, expected);
 }
@@ -575,21 +568,20 @@ TEST_F(LocalSerializerTest, HandlesInvalidTargetData) {
   google_firestore_v1_Target_QueryTarget& query_proto = invalid_target->query;
   query_proto.which_query_type =
       google_firestore_v1_Target_QueryTarget_structured_query_tag;
-  query_proto.structured_query.from_count = 1;
-  query_proto.structured_query.from =
-      MakeArray<google_firestore_v1_StructuredQuery_CollectionSelector>(1);
-  query_proto.structured_query.from[0].collection_id = MakeBytesArray("room");
+          google_firestore_v1_StructuredQuery_CollectionSelector from{};
+          from.collection_id= MakeBytesArray("room");
+          SetRepeatedField(&  query_proto.structured_query.from,&query_proto.structured_query.from_count ,{from});
 
   // Add invalid order_by.
-  query_proto.structured_query.order_by_count = 1;
-  query_proto.structured_query.order_by =
-      MakeArray<google_firestore_v1_StructuredQuery_Order>(1);
-  query_proto.structured_query.order_by[0].field.field_path =
-      MakeBytesArray(invalid_field_path);
-  query_proto.structured_query.order_by[0].direction =
-      google_firestore_v1_StructuredQuery_Direction_ASCENDING;
+  google_firestore_v1_StructuredQuery_Order order_by{};
+          order_by.field.field_path =
+                  MakeBytesArray(invalid_field_path);
+          order_by.direction =
+                  google_firestore_v1_StructuredQuery_Direction_ASCENDING;
+          SetRepeatedField(&  query_proto.structured_query.order_by,&query_proto.structured_query.order_by_count ,{order_by});
 
-  ByteString bytes = MakeByteString(invalid_target);
+
+          ByteString bytes = MakeByteString(invalid_target);
   StringReader reader(bytes);
 
   invalid_target = Message<firestore_client_Target>::TryParse(&reader);
@@ -618,10 +610,7 @@ TEST_F(LocalSerializerTest, EncodesTargetDataWithDocumentQuery) {
   expected->resume_token =
       MakeBytesArray(resume_token.data(), resume_token.size());
   expected->which_target_type = firestore_client_Target_documents_tag;
-  expected->documents.documents_count = 1;
-  expected->documents.documents = MakeArray<pb_bytes_array_t*>(1);
-  expected->documents.documents[0] =
-      MakeBytesArray("projects/p/databases/d/documents/room/1");
+          SetRepeatedField(&  expected->documents.documents,&expected->documents.documents_count ,{MakeBytesArray("projects/p/databases/d/documents/room/1")});
 
   ExpectRoundTrip(target_data, expected);
 }
@@ -644,10 +633,9 @@ TEST_F(LocalSerializerTest, EncodesNamedQuery) {
   google_firestore_v1_StructuredQuery& query =
       expected_bundled_query.structured_query;
 
-  query.from_count = 1;
-  query.from =
-      MakeArray<google_firestore_v1_StructuredQuery_CollectionSelector>(1);
-  query.from[0].collection_id = MakeBytesArray("room");
+          google_firestore_v1_StructuredQuery_CollectionSelector from{};
+          from.collection_id= MakeBytesArray("room");
+          SetRepeatedField(&  query.from,&query.from_count ,{from});
 
   query.where.which_filter_type =
       google_firestore_v1_StructuredQuery_Filter_field_filter_tag;
@@ -657,12 +645,12 @@ TEST_F(LocalSerializerTest, EncodesNamedQuery) {
       google_firestore_v1_StructuredQuery_FieldFilter_Operator_EQUAL;
 
   // Add default order_by.
-  query.order_by_count = 1;
-  query.order_by = MakeArray<google_firestore_v1_StructuredQuery_Order>(1);
-  query.order_by[0].field.field_path =
-      MakeBytesArray(FieldPath::kDocumentKeyPath);
-  query.order_by[0].direction =
-      google_firestore_v1_StructuredQuery_Direction_ASCENDING;
+          google_firestore_v1_StructuredQuery_Order order_by{};
+          order_by.field.field_path =
+                  MakeBytesArray(FieldPath::kDocumentKeyPath);
+          order_by.direction =
+                  google_firestore_v1_StructuredQuery_Direction_ASCENDING;
+          SetRepeatedField(&  query.order_by,&query.order_by_count ,{order_by});
 
   Message<firestore_NamedQuery> expected_named_query;
   expected_named_query->name = MakeBytesArray("query-1");
@@ -696,17 +684,16 @@ TEST_F(LocalSerializerTest, EncodesNamedLimitToLastQuery) {
       expected_bundled_query.structured_query;
   query.limit.value = 3;
 
-  query.from_count = 1;
-  query.from =
-      MakeArray<google_firestore_v1_StructuredQuery_CollectionSelector>(1);
-  query.from[0].collection_id = MakeBytesArray("room");
+          google_firestore_v1_StructuredQuery_CollectionSelector from{};
+          from.collection_id= MakeBytesArray("room");
+          SetRepeatedField(&  query.from,&query.from_count ,{from});
 
-  query.order_by_count = 1;
-  query.order_by = MakeArray<google_firestore_v1_StructuredQuery_Order>(1);
-  query.order_by[0].field.field_path =
-      MakeBytesArray(FieldPath::kDocumentKeyPath);
-  query.order_by[0].direction =
-      google_firestore_v1_StructuredQuery_Direction_ASCENDING;
+          google_firestore_v1_StructuredQuery_Order order_by{};
+          order_by.field.field_path =
+                  MakeBytesArray(FieldPath::kDocumentKeyPath);
+          order_by.direction =
+                  google_firestore_v1_StructuredQuery_Direction_ASCENDING;
+          SetRepeatedField(&  query.order_by,&query.order_by_count ,{order_by});
 
   Message<firestore_NamedQuery> expected_named_query;
   expected_named_query->name = MakeBytesArray("query-1");

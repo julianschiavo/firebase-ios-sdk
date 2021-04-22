@@ -32,6 +32,7 @@ namespace model {
 namespace {
 
 using nanopb::FreeFieldsArray;
+    using nanopb::FreeNanopbMessage;
 using nanopb::MakeArray;
 using nanopb::MakeBytesArray;
 using nanopb::MakeString;
