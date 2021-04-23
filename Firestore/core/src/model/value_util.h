@@ -101,6 +101,10 @@ google_firestore_v1_Value RefValue(const DatabaseId database_id,
 /** Creates a copy of the contents of the Value proto. */
 google_firestore_v1_Value DeepClone(const google_firestore_v1_Value& source);
 
+/** Creates a copy of the contents of the ArrayValue proto. */
+google_firestore_v1_ArrayValue DeepClone(
+    const google_firestore_v1_ArrayValue& source);
+
 /** Returns true if `value` is a INTEGER_VALUE. */
 inline bool IsInteger(const absl::optional<google_firestore_v1_Value>& value) {
   return value &&

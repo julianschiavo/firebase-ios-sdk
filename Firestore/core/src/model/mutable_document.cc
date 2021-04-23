@@ -28,11 +28,8 @@ namespace model {
 
 MutableDocument MutableDocument::InvalidDocument(
     const DocumentKey& document_key) {
-  return {document_key,
-          DocumentType::kInvalid,
-          SnapshotVersion::None(),
-          {},
-          DocumentState::kSynced};
+  return {document_key, DocumentType::kInvalid, SnapshotVersion::None(),
+          std::make_shared<ObjectValue>(), DocumentState::kSynced};
 }
 
 MutableDocument MutableDocument::FoundDocument(const DocumentKey& document_key,

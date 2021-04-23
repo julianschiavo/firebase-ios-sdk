@@ -63,15 +63,18 @@ Document LocalDocumentsView::GetDocument(
   return Document{std::move(document)};
 }
 
-void LocalDocumentsView::ApplyLocalMutationsToDocuments(
+DocumentMap LocalDocumentsView::ApplyLocalMutationsToDocuments(
     MutableDocumentMap& docs, const std::vector<MutationBatch>& batches) {
+  DocumentMap results;
   for (const auto& kv : docs) {
     const DocumentKey& key = kv.first;
     MutableDocument local_view = kv.second;
     for (const MutationBatch& batch : batches) {
       batch.ApplyToLocalDocument(local_view, key);
     }
+    results = results.insert(kv.first, std::move(local_view));
   }
+  return results;
 }
 
 DocumentMap LocalDocumentsView::GetDocuments(const DocumentKeySet& keys) {
@@ -87,13 +90,7 @@ DocumentMap LocalDocumentsView::GetLocalViewOfDocuments(
   }
   std::vector<MutationBatch> batches =
       mutation_queue_->AllMutationBatchesAffectingDocumentKeys(all_keys);
-  ApplyLocalMutationsToDocuments(docs, batches);
-
-  DocumentMap results;
-  for (const auto& kv : docs) {
-    results = results.insert(kv.first, kv.second);
-  }
-  return results;
+  return ApplyLocalMutationsToDocuments(docs, batches);
 }
 
 DocumentMap LocalDocumentsView::GetDocumentsMatchingQuery(

@@ -189,8 +189,6 @@ class ArrayTransform : public TransformOperation {
    */
   explicit ArrayTransform(const TransformOperation& op);
 
-  ArrayTransform() = default;
-
   google_firestore_v1_ArrayValue elements() const;
 
  private:

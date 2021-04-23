@@ -100,7 +100,7 @@ class LocalDocumentsView {
    * Returns the view of the given `docs` as they would appear after applying
    * all mutations in the given `batches`.
    */
-  static void ApplyLocalMutationsToDocuments(
+  static model::DocumentMap ApplyLocalMutationsToDocuments(
       model::MutableDocumentMap& docs,
       const std::vector<model::MutationBatch>& batches);
 

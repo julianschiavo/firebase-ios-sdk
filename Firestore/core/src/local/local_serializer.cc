@@ -300,7 +300,7 @@ Message<firestore_client_WriteBatch> LocalSerializer::EncodeMutationBatch(
   int i = 0;
   for (const auto& mutation : mutation_batch.base_mutations()) {
     result->base_writes[i] = rpc_serializer_.EncodeMutation(mutation);
-    i++;
+    ++i;
   }
 
   count = CheckedSize(mutation_batch.mutations().size());
@@ -309,7 +309,7 @@ Message<firestore_client_WriteBatch> LocalSerializer::EncodeMutationBatch(
   i = 0;
   for (const auto& mutation : mutation_batch.mutations()) {
     result->writes[i] = rpc_serializer_.EncodeMutation(mutation);
-    i++;
+    ++i;
   }
 
   result->local_write_time =

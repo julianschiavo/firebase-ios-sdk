@@ -557,15 +557,15 @@ Serializer::EncodeFieldTransform(const FieldTransform& field_transform) const {
     case Type::ArrayUnion:
       proto.which_transform_type =
           google_firestore_v1_DocumentTransform_FieldTransform_append_missing_elements_tag;  // NOLINT
-      proto.append_missing_elements =
-          (ArrayTransform(field_transform.transformation()).elements());
+      proto.append_missing_elements = DeepClone(
+          ArrayTransform(field_transform.transformation()).elements());
       return proto;
 
     case Type::ArrayRemove:
       proto.which_transform_type =
           google_firestore_v1_DocumentTransform_FieldTransform_remove_all_from_array_tag;  // NOLINT
-      proto.remove_all_from_array =
-          ArrayTransform(field_transform.transformation()).elements();
+      proto.remove_all_from_array = DeepClone(
+          ArrayTransform(field_transform.transformation()).elements());
       return proto;
 
     case Type::Increment: {

@@ -35,6 +35,7 @@ class Document {
   }
 
   Document() = default;
+
   const MutableDocument& get() const {
     return document_;
   }
@@ -42,9 +43,11 @@ class Document {
   const MutableDocument* operator->() const {
     return &document_;
   }
+
   size_t Hash() const {
     return document_.Hash();
   }
+
   std::string ToString() const {
     return document_.ToString();
   }
@@ -59,6 +62,10 @@ inline bool operator==(const Document& lhs, const Document& rhs) {
 
 inline bool operator!=(const Document& lhs, const Document& rhs) {
   return !(lhs == rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Document& doc) {
+  return os << doc.ToString();
 }
 
 }  // namespace model

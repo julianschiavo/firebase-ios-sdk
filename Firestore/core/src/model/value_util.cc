@@ -559,6 +559,18 @@ google_firestore_v1_Value DeepClone(const google_firestore_v1_Value& source) {
   return target;
 }
 
+google_firestore_v1_ArrayValue DeepClone(
+    const google_firestore_v1_ArrayValue& source) {
+  google_firestore_v1_ArrayValue target = source;
+  target.values_count = source.values_count;
+  target.values =
+      nanopb::MakeArray<google_firestore_v1_Value>(source.values_count);
+  for (pb_size_t i = 0; i < source.values_count; ++i) {
+    target.values[i] = DeepClone(source.values[i]);
+  }
+  return target;
+}
+
 }  // namespace model
 }  // namespace firestore
 }  // namespace firebase

@@ -152,9 +152,6 @@ class ArrayTransform::Rep : public TransformOperation::Rep {
 
   std::string ToString() const override;
 
-  static const std::vector<google_firestore_v1_Value>& Elements(
-      const TransformOperation& op);
-
  private:
   friend class ArrayTransform;
 
@@ -230,15 +227,15 @@ size_t ArrayTransform::Rep::Hash() const {
 
 std::string ArrayTransform::Rep::ToString() const {
   const char* name = type_ == Type::ArrayUnion ? "ArrayUnion" : "ArrayRemove";
-  return absl::StrCat(name, "(", util::ToString(elements_), ")");
+  return absl::StrCat(name, "(", CanonicalId(*elements_), ")");
 }
 
 google_firestore_v1_ArrayValue ArrayTransform::Rep::CoercedFieldValueArray(
     const absl::optional<google_firestore_v1_Value>& value) const {
   if (IsArray(value)) {
-    return value->array_value;
+    return DeepClone(*value).array_value;
   } else {
-    // coerce to empty array.
+    // coerce to empty array.;
     return {};
   }
 }
@@ -248,12 +245,15 @@ google_firestore_v1_Value ArrayTransform::Rep::Apply(
   google_firestore_v1_ArrayValue array_value =
       CoercedFieldValueArray(previous_value);
   if (type_ == Type::ArrayUnion) {
+    // Gather the list of elements that have to be added.
     std::vector<google_firestore_v1_Value> new_elements;
     for (pb_size_t i = 0; i < elements_->values_count; ++i) {
       if (!Contains(array_value, elements_->values[i])) {
         new_elements.push_back(elements_->values[i]);
       }
     }
+
+    // Append the elements to the end of the list
     pb_size_t new_size = array_value.values_count + new_elements.size();
     array_value.values = nanopb::ResizeArray<google_firestore_v1_Value>(
         array_value.values, new_size);

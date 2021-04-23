@@ -343,7 +343,7 @@ model::PatchMutation PatchMutation(
     const google_firestore_v1_Value& values,
     // TODO(rsgowman): Investigate changing update_mask to a set.
     std::vector<std::pair<std::string, TransformOperation>> transforms) {
-  return PatchMutationHelper(path, values, transforms,
+  return PatchMutationHelper(path, values, std::move(transforms),
                              Precondition::Exists(true), absl::nullopt);
 }
 
@@ -355,8 +355,8 @@ model::PatchMutation MergeMutation(
     const google_firestore_v1_Value& values,
     const std::vector<model::FieldPath>& update_mask,
     std::vector<std::pair<std::string, TransformOperation>> transforms) {
-  return PatchMutationHelper(path, values, transforms, Precondition::None(),
-                             update_mask);
+  return PatchMutationHelper(path, values, std::move(transforms),
+                             Precondition::None(), update_mask);
 }
 
 model::PatchMutation PatchMutationHelper(
