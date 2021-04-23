@@ -48,26 +48,26 @@ let package = Package(
       targets: ["FirebaseAppDistributionTarget"]
     ),
     // TODO: Re-enable after API review passes.
-    // .library(
-    //   name: "FirebaseCombineSwift-Beta",
-    //   targets: ["FirebaseCombineSwift"]
-    // ),
-    // .library(
-    //   name: "FirebaseAuthCombineSwift-Beta",
-    //   targets: ["FirebaseAuthCombineSwift"]
-    // ),
-    // .library(
-    //   name: "FirebaseFunctionsCombineSwift-Beta",
-    //   targets: ["FirebaseFunctionsCombineSwift"]
-    // ),
-    // .library(
-    //   name: "FirebaseStorageCombineSwift-Beta",
-    //   targets: ["FirebaseStorageCombineSwift"]
-    // ),
-    // .library(
-    //   name: "FirebaseCrashlytics",
-    //   targets: ["FirebaseCrashlytics"]
-    // ),
+    .library(
+      name: "FirebaseCombineSwift-Beta",
+      targets: ["FirebaseCombineSwift"]
+    ),
+    .library(
+      name: "FirebaseAuthCombineSwift-Beta",
+      targets: ["FirebaseAuthCombineSwift"]
+    ),
+    .library(
+      name: "FirebaseFunctionsCombineSwift-Beta",
+      targets: ["FirebaseFunctionsCombineSwift"]
+    ),
+    .library(
+      name: "FirebaseStorageCombineSwift-Beta",
+      targets: ["FirebaseStorageCombineSwift"]
+    ),
+    .library(
+      name: "FirebaseCrashlytics",
+      targets: ["FirebaseCrashlytics"]
+    ),
     .library(
       name: "FirebaseDatabase",
       targets: ["FirebaseDatabase"]
